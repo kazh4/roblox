@@ -1,0 +1,69 @@
+-- Oberhalb deines bestehenden Codes (z. B. vor ESPTable), hinzufügen:
+local NameESPTable = {}
+
+-- Erweiterte CreateESP-Funktion:
+local function CreateESP(player)
+    if ESPTable[player] then return end
+
+    local box = Drawing.new("Square")
+    box.Color = Color3.fromRGB(255, 105, 180)
+    box.Thickness = 1.5
+    box.Transparency = 1
+    box.Filled = false
+
+    local nameTag = Drawing.new("Text")
+    nameTag.Color = Color3.fromRGB(255, 105, 180)
+    nameTag.Size = 16
+    nameTag.Center = true
+    nameTag.Outline = true
+    nameTag.Font = 2
+    nameTag.Text = player.DisplayName or player.Name
+    nameTag.Visible = false
+
+    ESPTable[player] = box
+    NameESPTable[player] = nameTag
+end
+
+-- Erweiterte RemoveESP-Funktion:
+local function RemoveESP(player)
+    if ESPTable[player] then
+        ESPTable[player]:Remove()
+        ESPTable[player] = nil
+    end
+    if NameESPTable[player] then
+        NameESPTable[player]:Remove()
+        NameESPTable[player] = nil
+    end
+end
+
+-- Erweiterter RenderStepped-Code:
+RunService.RenderStepped:Connect(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head") then
+            local hrp = player.Character.HumanoidRootPart
+            local head = player.Character.Head
+            local pos, onscreen = Camera:WorldToViewportPoint(hrp.Position)
+            local namePos, nameVisible = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+
+            CreateESP(player)
+
+            local box = ESPTable[player]
+            local nameTag = NameESPTable[player]
+
+            if onscreen and nameVisible then
+                local size = Vector2.new(50, 75)
+                box.Size = size
+                box.Position = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
+                box.Visible = true
+
+                nameTag.Position = Vector2.new(namePos.X, namePos.Y - 20)
+                nameTag.Visible = true
+            else
+                box.Visible = false
+                nameTag.Visible = false
+            end
+        else
+            RemoveESP(player)
+        end
+    end
+end)
