@@ -1,0 +1,166 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KAZHA"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 250, 0, 180)
+frame.Position = UDim2.new(0, 20, 0.5, -90)
+frame.BackgroundColor3 = Color3.fromRGB(40, 0, 60)
+frame.BackgroundTransparency = 0.5
+frame.BorderSizePixel = 0
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 1, 0)
+title.Text = "KAZHA Menü"
+title.TextColor3 = Color3.fromRGB(200, 140, 255)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 26
+
+title.TextYAlignment = Enum.TextYAlignment.Center
+
+-- ESP Setup
+local featuresEnabled = false
+local highlights = {}
+
+local function createESP(player)
+	if player == LocalPlayer then return end
+	local function apply()
+		local character = player.Character or player.CharacterAdded:Wait()
+		local highlight = Instance.new("Highlight")
+		highlight.Name = "KAZHA_Highlight"
+		highlight.Adornee = character
+		highlight.FillColor = Color3.fromRGB(255, 20, 147) -- Pink
+		highlight.OutlineColor = Color3.new(1, 1, 1)
+		highlight.FillTransparency = 0.5
+		highlight.OutlineTransparency = 0
+		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		highlight.Parent = game.CoreGui
+		highlights[player] = highlight
+	end
+	coroutine.wrap(apply)()
+end
+
+local function removeESP(player)
+	if highlights[player] then
+		highlights[player]:Destroy()
+		highlights[player] = nil
+	end
+end
+
+local function enableFeatures()
+	featuresEnabled = true
+	for _, player in ipairs(Players:GetPlayers()) do
+		createESP(player)
+	end
+end
+
+local function disableFeatures()
+	featuresEnabled = false
+	for _, highlight in pairs(highlights) do
+		highlight:Destroy()
+	end
+	highlights = {}
+end
+
+local function toggleFeatures()
+	if featuresEnabled then
+		disableFeatures()
+	else
+		enableFeatures()
+	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function()
+		if featuresEnabled then
+			task.wait(1)
+			createESP(player)
+		end
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	removeESP(player)
+end)
+
+-- Aimlock Setup
+local aimlockActive = false
+local target = nil
+
+local function getClosestEnemy()
+	local shortestDistance = math.huge
+	local closest = nil
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+			local head = player.Character.Head
+			local screenPoint, onScreen = Camera:WorldToViewportPoint(head.Position)
+			if onScreen then
+				local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - UIS:GetMouseLocation()).Magnitude
+				if distance < shortestDistance then
+					shortestDistance = distance
+					closest = player
+				end
+			end
+		end
+	end
+	return closest
+end
+
+RunService.RenderStepped:Connect(function()
+	if aimlockActive and featuresEnabled then
+		target = getClosestEnemy()
+	end
+end)
+
+local __namecall
+__namecall = hookmetamethod(game, "__namecall", function(self, ...)
+	local args = {...}
+	local method = getnamecallmethod()
+	if method == "FindPartOnRayWithIgnoreList" and aimlockActive and featuresEnabled and target and target.Character and target.Character:FindFirstChild("Head") then
+		args[1] = Ray.new(Camera.CFrame.Position, (target.Character.Head.Position - Camera.CFrame.Position).Unit * 1000)
+		return __namecall(self, unpack(args))
+	end
+	return __namecall(self, ...)
+end)
+
+-- Input Handling
+UIS.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == Enum.KeyCode.T then
+		toggleFeatures()
+	end
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		aimlockActive = true
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		aimlockActive = false
+		target = nil
+	end
+end)
+
+-- Persist nach Respawn
+LocalPlayer.CharacterAdded:Connect(function()
+	if featuresEnabled then
+		for _, player in ipairs(Players:GetPlayers()) do
+			createESP(player)
+		end
+	end
+end)
+
+-- Direkt aktivieren bei Start
+enableFeatures()
