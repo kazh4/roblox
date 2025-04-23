@@ -1,0 +1,139 @@
+-- KAZHA GUI mit ESP und vollständigem Aimlock
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KAZHA"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 250, 0, 180)
+frame.Position = UDim2.new(0, 20, 0.5, -90)
+frame.BackgroundColor3 = Color3.fromRGB(40, 0, 60)
+frame.BackgroundTransparency = 0.5
+frame.BorderSizePixel = 0
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 1, 0)
+title.Text = "KAZHA Menü"
+title.TextColor3 = Color3.fromRGB(200, 140, 255)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 26
+title.TextYAlignment = Enum.TextYAlignment.Center
+
+-- Einstellungen
+_G.SendNotifications = true
+_G.DefaultSettings = false
+_G.TeamCheck = false
+_G.ESPVisible = true
+_G.TextColor = Color3.fromRGB(255, 80, 10)
+_G.TextSize = 14
+_G.Center = true
+_G.Outline = true
+_G.OutlineColor = Color3.fromRGB(0, 0, 0)
+_G.TextTransparency = 0.7
+_G.TextFont = Drawing.Fonts.UI
+_G.DisableKey = Enum.KeyCode.Q
+
+-- ESP Funktion
+local function CreateESP()
+    for _, v in next, Players:GetPlayers() do
+        if v ~= LocalPlayer then
+            local espText = Drawing.new("Text")
+            RunService.RenderStepped:Connect(function()
+                local char = v.Character
+                if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Head") then
+                    local vector, onScreen = Camera:WorldToViewportPoint(char.Head.Position)
+                    if onScreen then
+                        local dist = (char.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                        espText.Position = Vector2.new(vector.X, vector.Y - 25)
+                        espText.Text = ("("..math.floor(dist)..") "..v.Name.." ["..math.floor(char:FindFirstChild("Humanoid").Health).."]")
+                        espText.Size = _G.TextSize
+                        espText.Center = _G.Center
+                        espText.Outline = _G.Outline
+                        espText.OutlineColor = _G.OutlineColor
+                        espText.Color = _G.TextColor
+                        espText.Transparency = _G.TextTransparency
+                        espText.Font = _G.TextFont
+                        espText.Visible = _G.ESPVisible and (not _G.TeamCheck or LocalPlayer.Team ~= v.Team)
+                    else
+                        espText.Visible = false
+                    end
+                else
+                    espText.Visible = false
+                end
+            end)
+        end
+    end
+end
+
+-- ESP Aktivierung
+CreateESP()
+
+-- Aimlock Setup
+local AimPart = "Head"
+local AimRadius = 40
+local Holding = false
+
+local function getClosestEnemy()
+    local closest = nil
+    local shortest = AimRadius
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character:FindFirstChild(AimPart) and v.Character.Humanoid.Health > 0 then
+            local dist = (v.Character[AimPart].Position - Camera.CFrame.Position).Magnitude
+            if dist <= shortest then
+                if not _G.TeamCheck or v.Team ~= LocalPlayer.Team then
+                    closest = v.Character[AimPart]
+                    shortest = dist
+                end
+            end
+        end
+    end
+    return closest
+end
+
+UIS.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        Holding = true
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        Holding = false
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if Holding then
+        local target = getClosestEnemy()
+        if target then
+            local direction = (target.Position - Camera.CFrame.Position).Unit
+            local newCFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction)
+            Camera.CFrame = newCFrame
+        end
+    end
+end)
+
+-- GUI Toggle für ESP
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == _G.DisableKey then
+        _G.ESPVisible = not _G.ESPVisible
+        if _G.SendNotifications then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "KAZHA";
+                Text = "ESP Sichtbarkeit: "..tostring(_G.ESPVisible);
+                Duration = 5;
+            })
+        end
+    end
+end)
