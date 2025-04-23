@@ -1,0 +1,100 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KAZHA"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 250, 0, 180)
+frame.Position = UDim2.new(1, -270, 0, 20)
+frame.BackgroundColor3 = Color3.fromRGB(40, 0, 60)
+frame.BackgroundTransparency = 0.5
+frame.BorderSizePixel = 0
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Text = "KAZHA Menü"
+title.TextColor3 = Color3.fromRGB(200, 140, 255)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 26
+
+local info = Instance.new("TextLabel", frame)
+info.Size = UDim2.new(1, -10, 0, 120)
+info.Position = UDim2.new(0, 5, 0, 50)
+info.Text = "Taste [T] = ESP + "
+info.TextColor3 = Color3.fromRGB(200, 140, 255)
+info.BackgroundTransparency = 1
+info.TextWrapped = true
+info.Font = Enum.Font.SourceSans
+info.TextSize = 18
+
+-- ESP Setup
+local espEnabled = false
+local highlights = {}
+
+local function createESP(player)
+	if player == LocalPlayer then return end
+	local character = player.Character or player.CharacterAdded:Wait()
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "KAZHA_Highlight"
+	highlight.Adornee = character
+	highlight.FillColor = Color3.fromRGB(255, 105, 180)
+	highlight.OutlineColor = Color3.new(1, 1, 1)
+	highlight.FillTransparency = 0.5
+	highlight.OutlineTransparency = 0
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = game.CoreGui
+	highlights[player] = highlight
+end
+
+local function removeESP(player)
+	if highlights[player] then
+		highlights[player]:Destroy()
+		highlights[player] = nil
+	end
+end
+
+local function toggleESP()
+	espEnabled = not espEnabled
+	if espEnabled then
+		for _, player in ipairs(Players:GetPlayers()) do
+			createESP(player)
+		end
+	else
+		for _, highlight in pairs(highlights) do
+			highlight:Destroy()
+		end
+		highlights = {}
+	end
+end
+
+-- Update ESP for new players or respawns
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function()
+		if espEnabled then
+			task.wait(1) -- Warten bis Charakter vollständig geladen ist
+			createESP(player)
+		end
+	end)
+end)
+
+-- Entferne ESP bei Verlassen
+Players.PlayerRemoving:Connect(function(player)
+	removeESP(player)
+end)
+
+-- Taste T drücken
+UIS.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == Enum.KeyCode.T then
+		toggleESP()
+	end
+end)
