@@ -1,0 +1,57 @@
+-- Original script von https://github.com/ttwizz/Open-Aimbot
+-- Modifiziert: GUI Name zu "KAZHAWARE" geändert
+
+repeat task.wait() until game:IsLoaded()
+
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local Stats = game:GetService("Stats")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = Workspace.CurrentCamera
+
+local SupportedGames = {
+    [15502339080] = "Rivals",
+}
+
+local GameName = SupportedGames[game.PlaceId]
+
+if not GameName then
+    return warn("Game not supported")
+end
+
+-- Gui Library
+local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/ttwizz/Fluent-for-roblox/main/source.lua"))()
+
+local UISettings = {
+    TabWidth = 160,
+    Size = {620, 420},
+    Theme = "Darker",
+    Acrylic = true,
+    MinimizeKey = Enum.KeyCode.RightShift
+}
+
+local Window = Fluent:CreateWindow({
+    Title = "KAZHAWARE", -- Geändert von "Open Aimbot"
+    SubTitle = "KAZHAWARE", -- Geändert von "By @ttwiz_z"
+    TabWidth = UISettings.TabWidth,
+    Size = UDim2.fromOffset(table.unpack(UISettings.Size)),
+    Theme = UISettings.Theme,
+    Acrylic = UISettings.Acrylic,
+    MinimizeKey = UISettings.MinimizeKey
+})
+
+-- Rest des Scripts (Aimbot/ESP Funktionen) bleibt unverändert
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ttwizz/Open-Aimbot/main/dependencies/" .. GameName .. ".lua"))({
+    Window = Window,
+    UISettings = UISettings
+})
