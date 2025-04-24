@@ -1,0 +1,434 @@
+-- KAZHA MENU - Spezieller Cheat für Roblox "Rivals"
+-- Hinweis: Die Nutzung von Cheats in Roblox kann zu einer Account-Sperre führen.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- Prüfen, ob wir im Spiel "Rivals" sind
+local function CheckGameIsRivals()
+    local success, result = pcall(function()
+        return game.PlaceId and (game.PlaceId == 6824412283 or game.GameId == 6824412283 or game.Name:lower():find("rivals"))
+    end)
+    return success and result
+end
+
+-- GUI Erstellung
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KAZHA_MENU"
+ScreenGui.Parent = game.CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(100, 50, 150) -- Lila Farbe für das Menü
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(160, 80, 200) -- Hellerer lila Rand
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundColor3 = Color3.fromRGB(80, 40, 120) -- Dunkleres Lila für Titel
+Title.BorderSizePixel = 0
+Title.Text = "KAZHA MENU"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 20
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+local Subtitle = Instance.new("TextLabel")
+Subtitle.Name = "Subtitle"
+Subtitle.Size = UDim2.new(1, 0, 0, 20)
+Subtitle.Position = UDim2.new(0, 0, 0.2, 0)
+Subtitle.BackgroundTransparency = 1
+Subtitle.Text = "Rivals Cheat"
+Subtitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+Subtitle.TextSize = 14
+Subtitle.Font = Enum.Font.Gotham
+Subtitle.Parent = MainFrame
+
+-- ESP Toggle
+local ESPToggle = Instance.new("TextButton")
+ESPToggle.Name = "ESPToggle"
+ESPToggle.Size = UDim2.new(0.85, 0, 0, 30)
+ESPToggle.Position = UDim2.new(0.075, 0, 0.35, 0)
+ESPToggle.BackgroundColor3 = Color3.fromRGB(70, 30, 100)
+ESPToggle.BorderSizePixel = 1
+ESPToggle.BorderColor3 = Color3.fromRGB(140, 60, 180)
+ESPToggle.Text = "ESP: OFF"
+ESPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPToggle.TextSize = 16
+ESPToggle.Font = Enum.Font.Gotham
+ESPToggle.Parent = MainFrame
+
+-- Aimbot Toggle
+local AimbotToggle = Instance.new("TextButton")
+AimbotToggle.Name = "AimbotToggle"
+AimbotToggle.Size = UDim2.new(0.85, 0, 0, 30)
+AimbotToggle.Position = UDim2.new(0.075, 0, 0.55, 0)
+AimbotToggle.BackgroundColor3 = Color3.fromRGB(70, 30, 100)
+AimbotToggle.BorderSizePixel = 1
+AimbotToggle.BorderColor3 = Color3.fromRGB(140, 60, 180)
+AimbotToggle.Text = "Aimbot: OFF"
+AimbotToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotToggle.TextSize = 16
+AimbotToggle.Font = Enum.Font.Gotham
+AimbotToggle.Parent = MainFrame
+
+-- Exit Button
+local ExitButton = Instance.new("TextButton")
+ExitButton.Name = "ExitButton"
+ExitButton.Size = UDim2.new(0.85, 0, 0, 30)
+ExitButton.Position = UDim2.new(0.075, 0, 0.75, 0)
+ExitButton.BackgroundColor3 = Color3.fromRGB(200, 50, 80)
+ExitButton.BorderSizePixel = 1
+ExitButton.BorderColor3 = Color3.fromRGB(250, 100, 120)
+ExitButton.Text = "Exit"
+ExitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExitButton.TextSize = 16
+ExitButton.Font = Enum.Font.GothamBold
+ExitButton.Parent = MainFrame
+
+-- ESP Funktion
+local ESPEnabled = false
+local ESPObjects = {}
+
+-- Funktion zum Erstellen eines vollständigen ESP-Skeletts
+local function CreateESP(player)
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player ~= LocalPlayer then
+        -- Entferne alten ESP falls vorhanden
+        if ESPObjects[player] then
+            RemoveESP(player)
+        end
+        
+        local ESPFolder = Instance.new("Folder")
+        ESPFolder.Name = "ESPFolder_" .. player.Name
+        ESPFolder.Parent = game.CoreGui
+        
+        ESPObjects[player] = ESPFolder
+        
+        -- Namensschildfunktion
+        local BillboardGui = Instance.new("BillboardGui")
+        BillboardGui.Name = "NameESP"
+        BillboardGui.AlwaysOnTop = true
+        BillboardGui.Size = UDim2.new(0, 100, 0, 50)
+        BillboardGui.StudsOffset = Vector3.new(0, 3, 0)
+        BillboardGui.Adornee = player.Character.HumanoidRootPart
+        BillboardGui.Parent = ESPFolder
+        
+        local NameLabel = Instance.new("TextLabel")
+        NameLabel.Name = "NameLabel"
+        NameLabel.BackgroundTransparency = 1
+        NameLabel.Size = UDim2.new(1, 0, 1, 0)
+        NameLabel.Font = Enum.Font.GothamBold
+        NameLabel.TextColor3 = Color3.fromRGB(255, 105, 180) -- Pink für ESP
+        NameLabel.TextSize = 16
+        NameLabel.TextStrokeTransparency = 0.4
+        NameLabel.TextStrokeColor3 = Color3.fromRGB(40, 0, 40)
+        NameLabel.Text = player.Name
+        NameLabel.Parent = BillboardGui
+        
+        -- Gesundheitsbalken
+        local HealthBarBG = Instance.new("Frame")
+        HealthBarBG.Name = "HealthBarBG"
+        HealthBarBG.Size = UDim2.new(0.8, 0, 0.15, 0)
+        HealthBarBG.Position = UDim2.new(0.1, 0, 0.8, 0)
+        HealthBarBG.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        HealthBarBG.BorderSizePixel = 1
+        HealthBarBG.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        HealthBarBG.Parent = BillboardGui
+        
+        local HealthBar = Instance.new("Frame")
+        HealthBar.Name = "HealthBar"
+        HealthBar.Size = UDim2.new(1, 0, 1, 0)
+        HealthBar.BackgroundColor3 = Color3.fromRGB(255, 100, 180) -- Pink für die Gesundheit
+        HealthBar.BorderSizePixel = 0
+        HealthBar.Parent = HealthBarBG
+        
+        -- Körper-ESP mit 3D Boxen für jeden Körperteil
+        local function CreateBodyPartESP(part)
+            if part:IsA("BasePart") then
+                local BoxHandleAdornment = Instance.new("BoxHandleAdornment")
+                BoxHandleAdornment.Name = part.Name .. "_ESP"
+                BoxHandleAdornment.Adornee = part
+                BoxHandleAdornment.AlwaysOnTop = true
+                BoxHandleAdornment.ZIndex = 10
+                BoxHandleAdornment.Size = part.Size
+                BoxHandleAdornment.Transparency = 0.7
+                
+                -- Kopf in einer anderen Farbe markieren für besseres Aiming
+                if part.Name == "Head" then
+                    BoxHandleAdornment.Color3 = Color3.fromRGB(255, 0, 255) -- Helleres Pink für Kopf
+                else
+                    BoxHandleAdornment.Color3 = Color3.fromRGB(255, 105, 180) -- Pink für Körper
+                end
+                
+                BoxHandleAdornment.Parent = ESPFolder
+            end
+        end
+        
+        -- Erstelle ESP für alle Körperteile
+        for _, part in pairs(player.Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                CreateBodyPartESP(part)
+            end
+        end
+        
+        -- Aktualisiere die Gesundheitsanzeige
+        local function UpdateESPHealth()
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                local health = player.Character.Humanoid.Health
+                local maxHealth = player.Character.Humanoid.MaxHealth
+                local healthRatio = health / maxHealth
+                
+                HealthBar.Size = UDim2.new(healthRatio, 0, 1, 0)
+                
+                -- Farbe je nach Gesundheit ändern
+                if healthRatio > 0.75 then
+                    HealthBar.BackgroundColor3 = Color3.fromRGB(100, 255, 100) -- Grün
+                elseif healthRatio > 0.5 then
+                    HealthBar.BackgroundColor3 = Color3.fromRGB(255, 255, 100) -- Gelb
+                elseif healthRatio > 0.25 then
+                    HealthBar.BackgroundColor3 = Color3.fromRGB(255, 150, 50) -- Orange
+                else
+                    HealthBar.BackgroundColor3 = Color3.fromRGB(255, 50, 50) -- Rot
+                end
+            end
+        end
+        
+        -- Verbinde ein UpdateEvent für die Gesundheit
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.HealthChanged:Connect(function()
+                UpdateESPHealth()
+            end)
+            UpdateESPHealth() -- Initialisiere
+        end
+    end
+end
+
+local function RemoveESP(player)
+    if ESPObjects[player] then
+        ESPObjects[player]:Destroy()
+        ESPObjects[player] = nil
+    end
+end
+
+local function UpdateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if ESPEnabled then
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    if not ESPObjects[player] or not ESPObjects[player].Parent then
+                        CreateESP(player)
+                    end
+                end
+            else
+                RemoveESP(player)
+            end
+        end
+    end
+end
+
+-- Rivals-spezifische Funktionen
+local function GetPlayerTeam(player)
+    -- Rivals-spezifische Team-Erkennung
+    local success, team = pcall(function()
+        if player and player:FindFirstChild("Team") then
+            return player.Team.Value
+        elseif player and player.Character and player.Character:FindFirstChild("Team") then
+            return player.Character.Team.Value
+        end
+        return nil
+    end)
+    return success and team or nil
+end
+
+local function IsEnemy(player)
+    -- In Rivals sind Spieler in unterschiedlichen Teams Feinde
+    local myTeam = GetPlayerTeam(LocalPlayer)
+    local theirTeam = GetPlayerTeam(player)
+    
+    if not myTeam or not theirTeam then return true end -- Wenn keine Team-Info, behandle als Feind
+    return myTeam ~= theirTeam
+end
+
+-- Verbesserte Aimbot-Funktion speziell auf den Kopf
+local AimbotEnabled = false
+local AimbotActive = false
+local AimbotTarget = nil
+
+local function GetBestHeadAimPosition(character)
+    -- Ziele direkt auf den Kopf oder eine optimale Position
+    if character and character:FindFirstChild("Head") then
+        local head = character.Head
+        
+        -- Für Rivals ist der Head das beste Ziel
+        local aimPosition = head.Position
+        
+        -- Leichte Anpassung für Kopfschüsse (etwas oberhalb der Mitte des Kopfes zielen)
+        aimPosition = aimPosition + Vector3.new(0, head.Size.Y * 0.2, 0)
+        
+        return aimPosition
+    end
+    return nil
+end
+
+local function GetClosestEnemyPlayerWithHeadshot()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local bestAimPosition = nil
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and 
+           player.Character:FindFirstChild("Head") and
+           player.Character:FindFirstChild("Humanoid") and 
+           player.Character.Humanoid.Health > 0 and IsEnemy(player) then
+            
+            local aimPosition = GetBestHeadAimPosition(player.Character)
+            if aimPosition then
+                local pos = Camera:WorldToViewportPoint(aimPosition)
+                if pos.Z > 0 then
+                    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                    if dist < shortestDistance then
+                        closestPlayer = player
+                        shortestDistance = dist
+                        bestAimPosition = aimPosition
+                    end
+                end
+            end
+        end
+    end
+    
+    return closestPlayer, bestAimPosition
+end
+
+-- Eventhandler
+ESPToggle.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+    ESPToggle.Text = "ESP: " .. (ESPEnabled and "ON" or "OFF")
+    ESPToggle.BackgroundColor3 = ESPEnabled and Color3.fromRGB(120, 50, 180) or Color3.fromRGB(70, 30, 100)
+    UpdateESP()
+end)
+
+AimbotToggle.MouseButton1Click:Connect(function()
+    AimbotEnabled = not AimbotEnabled
+    AimbotToggle.Text = "Aimbot: " .. (AimbotEnabled and "ON" or "OFF")
+    AimbotToggle.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(120, 50, 180) or Color3.fromRGB(70, 30, 100)
+end)
+
+ExitButton.MouseButton1Click:Connect(function()
+    -- Aufräumen vor dem Beenden
+    for player, gui in pairs(ESPObjects) do
+        if gui then gui:Destroy() end
+    end
+    ESPObjects = {}
+    ScreenGui:Destroy()
+end)
+
+-- Spieler hinzufügen/entfernen Event
+Players.PlayerAdded:Connect(function(player)
+    if ESPEnabled then
+        wait(1) -- Warten bis der Charakter geladen ist
+        CreateESP(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    RemoveESP(player)
+end)
+
+-- Character hinzugefügt Event
+local function onCharacterAdded(player, character)
+    if ESPEnabled then
+        wait(1) -- Kurz warten bis der Charakter vollständig geladen ist
+        CreateESP(player)
+    end
+    
+    -- Bei eigenem Charakter
+    if player == LocalPlayer then
+        character.ChildAdded:Connect(function(child)
+            wait() -- Kurz warten um Fehler zu vermeiden
+            UpdateESP()
+        end)
+    end
+end
+
+-- Bei jedem Spieler das CharacterAdded-Event abonnieren
+for _, player in pairs(Players:GetPlayers()) do
+    player.CharacterAdded:Connect(function(character)
+        onCharacterAdded(player, character)
+    end)
+    
+    if player.Character then
+        onCharacterAdded(player, player.Character)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        onCharacterAdded(player, character)
+    end)
+end)
+
+-- Aimbot mit rechter Maustaste
+Mouse.Button2Down:Connect(function()
+    if AimbotEnabled then
+        AimbotActive = true
+    end
+end)
+
+Mouse.Button2Up:Connect(function()
+    AimbotActive = false
+    AimbotTarget = nil
+end)
+
+-- Hauptloop
+RunService.RenderStepped:Connect(function()
+    UpdateESP()
+    
+    if AimbotEnabled and AimbotActive then
+        local target, aimPos = GetClosestEnemyPlayerWithHeadshot()
+        
+        if target and aimPos then
+            local pos = Camera:WorldToViewportPoint(aimPos)
+            if pos.Z > 0 then
+                -- Präzises Zielen auf den Kopf mit schneller Bewegung
+                -- Geringere Smoothing-Werte für direkteres Zielen
+                mousemoverel((pos.X - Mouse.X) * 0.5, (pos.Y - Mouse.Y) * 0.5)
+            end
+        end
+    end
+end)
+
+-- Hilfe-Text
+local Instructions = Instance.new("TextLabel")
+Instructions.Name = "Instructions"
+Instructions.Size = UDim2.new(0.9, 0, 0, 20)
+Instructions.Position = UDim2.new(0.05, 0, 0.9, 0)
+Instructions.BackgroundTransparency = 1
+Instructions.Text = "Aimbot (Head): Rechte Maustaste"
+Instructions.TextColor3 = Color3.fromRGB(220, 220, 220)
+Instructions.TextSize = 12
+Instructions.Font = Enum.Font.Gotham
+Instructions.Parent = MainFrame
+
+-- Wasserzeichen
+local Watermark = Instance.new("TextLabel")
+Watermark.Name = "Watermark"
+Watermark.Size = UDim2.new(0, 100, 0, 20)
+Watermark.Position = UDim2.new(0, 5, 0, 5)
+Watermark.BackgroundTransparency = 1
+Watermark.Text = "KAZHA MENU"
+Watermark.TextColor3 = Color3.fromRGB(255, 105, 180)
+Watermark.TextSize = 12
+Watermark.Font = Enum.Font.GothamBold
+Watermark.Parent = ScreenGui
+
+print("KAZHA MENU für Rivals geladen - [Vollständiger Körper-ESP & Head-Aimbot]")
