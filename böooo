@@ -1,0 +1,395 @@
+-- KAZHA BLOCKSPIN - Features: ESP, Speed Hack, Jump Power, Anti-Fall, Auto Spin
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- Settings (adjust these as needed)
+local Settings = {
+    ESP = {
+        Enabled = false,
+        ShowDistance = true,
+        ShowHealth = true,
+        RefreshRate = 1, -- Update ESP every second
+        Color = Color3.fromRGB(160, 32, 240) -- Lila für ESP
+    },
+    SpeedHack = {
+        Enabled = false,
+        SpeedMultiplier = 2, -- 2x normal speed
+        Key = Enum.KeyCode.LeftShift -- Hold to activate
+    },
+    JumpPower = {
+        Enabled = false,
+        Power = 100 -- Default is usually 50
+    },
+    AntiFall = {
+        Enabled = false,
+        MinY = 0 -- Minimum Y position before teleporting back
+    },
+    AutoSpin = {
+        Enabled = false,
+        Interval = 0.1 -- Spin clicks every 0.1 seconds
+    }
+}
+
+-- Farben für das Schwarz-Lila Design
+local Colors = {
+    Background = Color3.fromRGB(20, 20, 25),
+    Border = Color3.fromRGB(100, 50, 200),
+    ButtonBg = Color3.fromRGB(30, 30, 40),
+    ButtonActive = Color3.fromRGB(120, 70, 220),
+    Text = Color3.fromRGB(220, 220, 255),
+    TitleBg = Color3.fromRGB(60, 30, 120),
+    ExitButton = Color3.fromRGB(150, 30, 60),
+    ESP = Color3.fromRGB(160, 32, 240)  -- Einheitliches Lila für Namen
+}
+
+-- Create GUI with KAZHA style
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KAZHA_BLOCKSPIN"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 220, 0, 300)
+MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Colors.Background
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Colors.Border
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+-- Schatten für das Hauptfenster
+local Shadow = Instance.new("ImageLabel")
+Shadow.Name = "Shadow"
+Shadow.Size = UDim2.new(1, 20, 1, 20)
+Shadow.Position = UDim2.new(0, -10, 0, -10)
+Shadow.BackgroundTransparency = 1
+Shadow.ImageTransparency = 0.6
+Shadow.Image = "rbxassetid://5028857084"
+Shadow.ScaleType = Enum.ScaleType.Slice
+Shadow.SliceCenter = Rect.new(24, 24, 276, 276)
+Shadow.ZIndex = -1
+Shadow.Parent = MainFrame
+
+-- Add a title with KAZHA style
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundColor3 = Colors.TitleBg
+Title.BorderSizePixel = 0
+Title.Text = "KAZHA BLOCKSPIN"
+Title.TextColor3 = Colors.Text
+Title.TextSize = 20
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+-- Create toggles function with KAZHA style
+local function CreateToggle(name, position, setting, path)
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Name = name .. "Frame"
+    ToggleFrame.Size = UDim2.new(1, -20, 0, 30)
+    ToggleFrame.Position = position
+    ToggleFrame.BackgroundColor3 = Colors.ButtonBg
+    ToggleFrame.BorderSizePixel = 0
+    ToggleFrame.Parent = MainFrame
+    
+    local ToggleLabel = Instance.new("TextLabel")
+    ToggleLabel.Name = "Label"
+    ToggleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    ToggleLabel.BackgroundTransparency = 1
+    ToggleLabel.Text = name
+    ToggleLabel.TextColor3 = Colors.Text
+    ToggleLabel.TextSize = 14
+    ToggleLabel.Font = Enum.Font.Gotham
+    ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    ToggleLabel.Parent = ToggleFrame
+    
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Name = "Button"
+    ToggleButton.Size = UDim2.new(0.3, -10, 1, -10)
+    ToggleButton.Position = UDim2.new(0.7, 5, 0, 5)
+    ToggleButton.BackgroundColor3 = setting and Colors.ButtonActive or Colors.ButtonBg
+    ToggleButton.BorderColor3 = Colors.Border
+    ToggleButton.BorderSizePixel = 1
+    ToggleButton.Text = setting and "ON" or "OFF"
+    ToggleButton.TextColor3 = Colors.Text
+    ToggleButton.TextSize = 14
+    ToggleButton.Font = Enum.Font.GothamBold
+    ToggleButton.Parent = ToggleFrame
+    
+    ToggleButton.MouseButton1Click:Connect(function()
+        -- Toggle the setting
+        local parts = path:split(".")
+        local currentTable = Settings
+        
+        for i = 1, #parts - 1 do
+            currentTable = currentTable[parts[i]]
+        end
+        
+        currentTable[parts[#parts]] = not currentTable[parts[#parts]]
+        
+        -- Update button appearance
+        ToggleButton.BackgroundColor3 = currentTable[parts[#parts]] and Colors.ButtonActive or Colors.ButtonBg
+        ToggleButton.Text = currentTable[parts[#parts]] and "ON" or "OFF"
+    end)
+    
+    return ToggleButton
+end
+
+-- Create all toggles
+local ESPToggle = CreateToggle("ESP", UDim2.new(0, 10, 0, 45), Settings.ESP.Enabled, "ESP.Enabled")
+local SpeedToggle = CreateToggle("Speed Hack", UDim2.new(0, 10, 0, 85), Settings.SpeedHack.Enabled, "SpeedHack.Enabled")
+local JumpToggle = CreateToggle("Jump Power", UDim2.new(0, 10, 0, 125), Settings.JumpPower.Enabled, "JumpPower.Enabled")
+local AntiFallToggle = CreateToggle("Anti Fall", UDim2.new(0, 10, 0, 165), Settings.AntiFall.Enabled, "AntiFall.Enabled")
+local AutoSpinToggle = CreateToggle("Auto Spin", UDim2.new(0, 10, 0, 205), Settings.AutoSpin.Enabled, "AutoSpin.Enabled")
+
+-- Create close button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(1, -20, 0, 30)
+CloseButton.Position = UDim2.new(0, 10, 0, 250)
+CloseButton.BackgroundColor3 = Colors.ExitButton
+CloseButton.BorderSizePixel = 1
+CloseButton.BorderColor3 = Colors.Border
+CloseButton.Text = "CLOSE"
+CloseButton.TextColor3 = Colors.Text
+CloseButton.TextSize = 14
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Parent = MainFrame
+
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- ESP functionality
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESPHighlight_" .. player.Name
+    highlight.FillColor = Settings.ESP.Color
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "ESPInfo_" .. player.Name
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Size = UDim2.new(0, 200, 0, 50)
+    billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+    
+    local infoLabel = Instance.new("TextLabel")
+    infoLabel.Name = "InfoLabel"
+    infoLabel.Size = UDim2.new(1, 0, 1, 0)
+    infoLabel.BackgroundTransparency = 1
+    infoLabel.TextColor3 = Colors.ESP
+    infoLabel.TextStrokeTransparency = 0.5
+    infoLabel.TextSize = 14
+    infoLabel.Font = Enum.Font.GothamBold
+    infoLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    infoLabel.Parent = billboardGui
+    
+    -- Connect to player's character
+    local function onCharacterAdded(character)
+        if not character then return end
+        
+        highlight.Parent = character
+        billboardGui.Adornee = character:WaitForChild("Head")
+        billboardGui.Parent = character
+        
+        -- Update info
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            RunService.Heartbeat:Connect(function()
+                if not Settings.ESP.Enabled then
+                    highlight.Enabled = false
+                    billboardGui.Enabled = false
+                    return
+                else
+                    highlight.Enabled = true
+                    billboardGui.Enabled = true
+                end
+                
+                local distance = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) and 
+                                (character:FindFirstChild("HumanoidRootPart").Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude or 0
+                
+                local text = player.Name
+                
+                if Settings.ESP.ShowDistance then
+                    text = text .. " [" .. math.floor(distance) .. "m]"
+                end
+                
+                if Settings.ESP.ShowHealth and humanoid then
+                    text = text .. " [" .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth) .. " HP]"
+                end
+                
+                infoLabel.Text = text
+            end)
+        end
+    end
+    
+    if player.Character then
+        onCharacterAdded(player.Character)
+    end
+    
+    player.CharacterAdded:Connect(onCharacterAdded)
+end
+
+-- Set up ESP for all players
+local function SetupESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            CreateESP(player)
+        end
+    end
+    
+    Players.PlayerAdded:Connect(function(player)
+        CreateESP(player)
+    end)
+end
+
+-- Speed hack implementation
+local isSpeedHackActive = false
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Settings.SpeedHack.Key then
+        isSpeedHackActive = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Settings.SpeedHack.Key then
+        isSpeedHackActive = false
+    end
+end)
+
+-- Anti-fall implementation
+local originalPosition = nil
+local function SavePosition()
+    if Character and HumanoidRootPart then
+        originalPosition = HumanoidRootPart.Position
+    end
+end
+
+-- Try to find spin button
+local function FindSpinButton()
+    -- This is a generic approach; may need adjustment based on actual game UI
+    for _, gui in pairs(LocalPlayer.PlayerGui:GetDescendants()) do
+        if gui:IsA("TextButton") and (gui.Text:lower():find("spin") or gui.Name:lower():find("spin")) then
+            return gui
+        end
+    end
+    
+    -- Check workspace for physical buttons
+    for _, part in pairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name:lower():find("spin") then
+            return part
+        end
+    end
+    
+    return nil
+end
+
+-- Main update loop
+RunService.Heartbeat:Connect(function(deltaTime)
+    -- Update character reference if needed
+    if not Character or not Character.Parent then
+        Character = LocalPlayer.Character
+        if Character then
+            Humanoid = Character:FindFirstChildOfClass("Humanoid")
+            HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+            SavePosition()
+        end
+        return
+    end
+    
+    -- Speed hack
+    if Settings.SpeedHack.Enabled and isSpeedHackActive and Humanoid then
+        Humanoid.WalkSpeed = 16 * Settings.SpeedHack.SpeedMultiplier
+    elseif Humanoid then
+        Humanoid.WalkSpeed = 16 -- Reset to default
+    end
+    
+    -- Jump power
+    if Settings.JumpPower.Enabled and Humanoid then
+        Humanoid.JumpPower = Settings.JumpPower.Power
+    elseif Humanoid then
+        Humanoid.JumpPower = 50 -- Reset to default
+    end
+    
+    -- Anti-fall
+    if Settings.AntiFall.Enabled and HumanoidRootPart then
+        if HumanoidRootPart.Position.Y < Settings.AntiFall.MinY then
+            if originalPosition then
+                HumanoidRootPart.CFrame = CFrame.new(originalPosition)
+            end
+        else
+            SavePosition()
+        end
+    end
+end)
+
+-- Auto Spin feature
+spawn(function()
+    while wait(Settings.AutoSpin.Interval) do
+        if Settings.AutoSpin.Enabled then
+            local spinButton = FindSpinButton()
+            if spinButton then
+                if spinButton:IsA("TextButton") then
+                    -- GUI button click
+                    for i = 1, 2 do
+                        -- Fire both mouse events to ensure proper click registration
+                        local clickEvent = spinButton.MouseButton1Click
+                        if clickEvent then
+                            clickEvent:Fire()
+                        end
+                        
+                        -- Alternative approach
+                        local virtualClick = {
+                            UserInputType = Enum.UserInputType.MouseButton1,
+                            Position = spinButton.AbsolutePosition + spinButton.AbsoluteSize/2
+                        }
+                        
+                        for _, connection in pairs(getconnections(spinButton.MouseButton1Down)) do
+                            connection:Fire(virtualClick)
+                        end
+                        for _, connection in pairs(getconnections(spinButton.MouseButton1Click)) do
+                            connection:Fire(virtualClick)
+                        end
+                    end
+                elseif spinButton:IsA("BasePart") then
+                    -- Physical button click
+                    local clickDetector = spinButton:FindFirstChildOfClass("ClickDetector")
+                    if clickDetector then
+                        fireclickdetector(clickDetector)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Character added event
+LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+    Character = newCharacter
+    Humanoid = Character:WaitForChild("Humanoid")
+    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+    SavePosition()
+end)
+
+-- Initialize
+SetupESP()
+SavePosition()
+
+-- Print success message
+print("KAZHA BLOCKSPIN loaded successfully!")
+print("Press Left Shift for Speed Boost")
