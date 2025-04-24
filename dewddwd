@@ -1,0 +1,225 @@
+-- Roblox Cheat mit GUI für ESP und Aimbot
+-- Hinweis: Die Nutzung von Cheats in Roblox kann zu einer Account-Sperre führen.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- GUI Erstellung
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CheatGUI"
+ScreenGui.Parent = game.CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 200, 0, 170)
+MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Title.BorderSizePixel = 0
+Title.Text = "Roblox Cheat"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = MainFrame
+
+-- ESP Toggle
+local ESPToggle = Instance.new("TextButton")
+ESPToggle.Name = "ESPToggle"
+ESPToggle.Size = UDim2.new(0.8, 0, 0, 30)
+ESPToggle.Position = UDim2.new(0.1, 0, 0.3, 0)
+ESPToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ESPToggle.BorderSizePixel = 0
+ESPToggle.Text = "ESP: OFF"
+ESPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPToggle.TextSize = 14
+ESPToggle.Font = Enum.Font.SourceSans
+ESPToggle.Parent = MainFrame
+
+-- Aimbot Toggle
+local AimbotToggle = Instance.new("TextButton")
+AimbotToggle.Name = "AimbotToggle"
+AimbotToggle.Size = UDim2.new(0.8, 0, 0, 30)
+AimbotToggle.Position = UDim2.new(0.1, 0, 0.5, 0)
+AimbotToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimbotToggle.BorderSizePixel = 0
+AimbotToggle.Text = "Aimbot: OFF"
+AimbotToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AimbotToggle.TextSize = 14
+AimbotToggle.Font = Enum.Font.SourceSans
+AimbotToggle.Parent = MainFrame
+
+-- Exit Button
+local ExitButton = Instance.new("TextButton")
+ExitButton.Name = "ExitButton"
+ExitButton.Size = UDim2.new(0.8, 0, 0, 30)
+ExitButton.Position = UDim2.new(0.1, 0, 0.7, 0)
+ExitButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+ExitButton.BorderSizePixel = 0
+ExitButton.Text = "Exit"
+ExitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExitButton.TextSize = 14
+ExitButton.Font = Enum.Font.SourceSansBold
+ExitButton.Parent = MainFrame
+
+-- ESP Funktion
+local ESPEnabled = false
+local ESPObjects = {}
+
+local function CreateESP(player)
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player ~= LocalPlayer then
+        local BillboardGui = Instance.new("BillboardGui")
+        BillboardGui.Name = "ESP"
+        BillboardGui.AlwaysOnTop = true
+        BillboardGui.Size = UDim2.new(0, 100, 0, 50)
+        BillboardGui.StudsOffset = Vector3.new(0, 3, 0)
+        BillboardGui.Adornee = player.Character.HumanoidRootPart
+        
+        local NameLabel = Instance.new("TextLabel")
+        NameLabel.Name = "NameLabel"
+        NameLabel.BackgroundTransparency = 1
+        NameLabel.Size = UDim2.new(1, 0, 1, 0)
+        NameLabel.Font = Enum.Font.SourceSansBold
+        NameLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+        NameLabel.TextSize = 14
+        NameLabel.TextStrokeTransparency = 0.5
+        NameLabel.Text = player.Name
+        NameLabel.Parent = BillboardGui
+        
+        ESPObjects[player] = BillboardGui
+        BillboardGui.Parent = player.Character.HumanoidRootPart
+    end
+end
+
+local function RemoveESP(player)
+    if ESPObjects[player] then
+        ESPObjects[player]:Destroy()
+        ESPObjects[player] = nil
+    end
+end
+
+local function UpdateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if ESPEnabled then
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    if not ESPObjects[player] then
+                        CreateESP(player)
+                    end
+                end
+            else
+                RemoveESP(player)
+            end
+        end
+    end
+end
+
+-- Aimbot Funktion
+local AimbotEnabled = false
+local AimbotTarget = nil
+local AimbotKey = Enum.KeyCode.X
+
+local function GetClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local pos = Camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+            if pos.Z > 0 then
+                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                if dist < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = dist
+                end
+            end
+        end
+    end
+    
+    return closestPlayer
+end
+
+-- Eventhandler
+ESPToggle.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+    ESPToggle.Text = "ESP: " .. (ESPEnabled and "ON" or "OFF")
+    ESPToggle.BackgroundColor3 = ESPEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(50, 50, 50)
+    UpdateESP()
+end)
+
+AimbotToggle.MouseButton1Click:Connect(function()
+    AimbotEnabled = not AimbotEnabled
+    AimbotToggle.Text = "Aimbot: " .. (AimbotEnabled and "ON" or "OFF")
+    AimbotToggle.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(50, 50, 50)
+end)
+
+ExitButton.MouseButton1Click:Connect(function()
+    -- Aufräumen vor dem Beenden
+    for player, gui in pairs(ESPObjects) do
+        if gui then gui:Destroy() end
+    end
+    ESPObjects = {}
+    ScreenGui:Destroy()
+end)
+
+-- Spieler hinzufügen/entfernen Event
+Players.PlayerAdded:Connect(function(player)
+    if ESPEnabled then
+        wait(1) -- Warten bis der Charakter geladen ist
+        CreateESP(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    RemoveESP(player)
+end)
+
+-- Aimbot Steuerung
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == AimbotKey and AimbotEnabled then
+        AimbotTarget = GetClosestPlayer()
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == AimbotKey then
+        AimbotTarget = nil
+    end
+end)
+
+-- Hauptloop
+RunService.RenderStepped:Connect(function()
+    UpdateESP()
+    
+    if AimbotEnabled and AimbotTarget and AimbotTarget.Character and AimbotTarget.Character:FindFirstChild("HumanoidRootPart") then
+        local pos = Camera:WorldToViewportPoint(AimbotTarget.Character.HumanoidRootPart.Position)
+        if pos.Z > 0 then
+            mousemoverel((pos.X - Mouse.X) * 0.5, (pos.Y - Mouse.Y) * 0.5)
+        end
+    end
+end)
+
+-- Hilfe-Text
+local Instructions = Instance.new("TextLabel")
+Instructions.Name = "Instructions"
+Instructions.Size = UDim2.new(0.9, 0, 0, 20)
+Instructions.Position = UDim2.new(0.05, 0, 0.9, 0)
+Instructions.BackgroundTransparency = 1
+Instructions.Text = "Aimbot: Halte X gedrückt"
+Instructions.TextColor3 = Color3.fromRGB(200, 200, 200)
+Instructions.TextSize = 12
+Instructions.Font = Enum.Font.SourceSans
+Instructions.Parent = MainFrame
+
+print("Cheat GUI geladen")
