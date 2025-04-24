@@ -1,0 +1,470 @@
+-- KAZHA MENU - Optimierter Cheat für Roblox "Rivals"
+-- Leistungsoptimiertes Strichmännchen-ESP und Head-Aimbot
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- Performance-Optimierte Variablen
+local ESPEnabled = false
+local AimbotEnabled = false
+local AimbotActive = false
+local ESPObjects = {}
+local HeartbeatConnection
+local RenderConnection
+local ActivePlayers = {}
+local UpdateRate = 0.05 -- ESP Update-Rate für bessere Performance
+
+-- GUI Erstellung
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KAZHA_MENU"
+ScreenGui.Parent = game.CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(255, 105, 180) -- Pink für Menü
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(255, 150, 220) -- Helleres Pink für Rand
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundColor3 = Color3.fromRGB(255, 80, 170) -- Etwas dunkleres Pink für Titel
+Title.BorderSizePixel = 0
+Title.Text = "KAZHA MENU"
+Title.TextColor3 = Color3.fromRGB(0, 0, 0) -- Schwarze Schrift
+Title.TextSize = 20
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+local Subtitle = Instance.new("TextLabel")
+Subtitle.Name = "Subtitle"
+Subtitle.Size = UDim2.new(1, 0, 0, 20)
+Subtitle.Position = UDim2.new(0, 0, 0.2, 0)
+Subtitle.BackgroundTransparency = 1
+Subtitle.Text = "Rivals Cheat"
+Subtitle.TextColor3 = Color3.fromRGB(0, 0, 0) -- Schwarze Schrift
+Subtitle.TextSize = 14
+Subtitle.Font = Enum.Font.Gotham
+Subtitle.Parent = MainFrame
+
+-- ESP Toggle
+local ESPToggle = Instance.new("TextButton")
+ESPToggle.Name = "ESPToggle"
+ESPToggle.Size = UDim2.new(0.85, 0, 0, 30)
+ESPToggle.Position = UDim2.new(0.075, 0, 0.35, 0)
+ESPToggle.BackgroundColor3 = Color3.fromRGB(230, 80, 150) -- Leicht dunkler für Button
+ESPToggle.BorderSizePixel = 1
+ESPToggle.BorderColor3 = Color3.fromRGB(200, 50, 120)
+ESPToggle.Text = "ESP: OFF"
+ESPToggle.TextColor3 = Color3.fromRGB(0, 0, 0) -- Schwarze Schrift
+ESPToggle.TextSize = 16
+ESPToggle.Font = Enum.Font.Gotham
+ESPToggle.Parent = MainFrame
+
+-- Aimbot Toggle
+local AimbotToggle = Instance.new("TextButton")
+AimbotToggle.Name = "AimbotToggle"
+AimbotToggle.Size = UDim2.new(0.85, 0, 0, 30)
+AimbotToggle.Position = UDim2.new(0.075, 0, 0.55, 0)
+AimbotToggle.BackgroundColor3 = Color3.fromRGB(230, 80, 150) -- Leicht dunkler für Button
+AimbotToggle.BorderSizePixel = 1
+AimbotToggle.BorderColor3 = Color3.fromRGB(200, 50, 120)
+AimbotToggle.Text = "Aimbot: OFF"
+AimbotToggle.TextColor3 = Color3.fromRGB(0, 0, 0) -- Schwarze Schrift
+AimbotToggle.TextSize = 16
+AimbotToggle.Font = Enum.Font.Gotham
+AimbotToggle.Parent = MainFrame
+
+-- Exit Button
+local ExitButton = Instance.new("TextButton")
+ExitButton.Name = "ExitButton"
+ExitButton.Size = UDim2.new(0.85, 0, 0, 30)
+ExitButton.Position = UDim2.new(0.075, 0, 0.75, 0)
+ExitButton.BackgroundColor3 = Color3.fromRGB(200, 50, 80)
+ExitButton.BorderSizePixel = 1
+ExitButton.BorderColor3 = Color3.fromRGB(250, 100, 120)
+ExitButton.Text = "Exit"
+ExitButton.TextColor3 = Color3.fromRGB(0, 0, 0) -- Schwarze Schrift
+ExitButton.TextSize = 16
+ExitButton.Font = Enum.Font.GothamBold
+ExitButton.Parent = MainFrame
+
+-- Hilfe-Text
+local Instructions = Instance.new("TextLabel")
+Instructions.Name = "Instructions"
+Instructions.Size = UDim2.new(0.9, 0, 0, 20)
+Instructions.Position = UDim2.new(0.05, 0, 0.9, 0)
+Instructions.BackgroundTransparency = 1
+Instructions.Text = "Aimbot (Head): Rechte Maustaste"
+Instructions.TextColor3 = Color3.fromRGB(0, 0, 0) -- Schwarze Schrift
+Instructions.TextSize = 12
+Instructions.Font = Enum.Font.Gotham
+Instructions.Parent = MainFrame
+
+-- Optimierte ESP-Funktionen für Strichmännchen
+local function CreateStickmanESP(player)
+    if not player or not player.Character then return end
+    
+    -- Überprüfe, ob der ESP für diesen Spieler bereits existiert
+    if ESPObjects[player] and ESPObjects[player].Parent then
+        return
+    end
+    
+    -- ESP-Container erstellen
+    local ESPFolder = Instance.new("Folder")
+    ESPFolder.Name = "ESP_" .. player.Name
+    ESPFolder.Parent = game.CoreGui
+    
+    ESPObjects[player] = ESPFolder
+    
+    -- Hauptkörperteile für das Strichmännchen
+    local parts = {
+        Head = player.Character:FindFirstChild("Head"),
+        Torso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso"),
+        LeftArm = player.Character:FindFirstChild("Left Arm") or player.Character:FindFirstChild("LeftUpperArm"),
+        RightArm = player.Character:FindFirstChild("Right Arm") or player.Character:FindFirstChild("RightUpperArm"),
+        LeftLeg = player.Character:FindFirstChild("Left Leg") or player.Character:FindFirstChild("LeftUpperLeg"),
+        RightLeg = player.Character:FindFirstChild("Right Leg") or player.Character:FindFirstChild("RightUpperLeg")
+    }
+    
+    -- Lila Farbe für das Strichmännchen
+    local espColor = Color3.fromRGB(150, 50, 255) -- Lila
+    
+    -- Linien zwischen Körperteilen
+    local connections = {
+        {"Head", "Torso"},
+        {"Torso", "LeftArm"},
+        {"Torso", "RightArm"},
+        {"Torso", "LeftLeg"},
+        {"Torso", "RightLeg"}
+    }
+    
+    -- Punkte (Gelenke) erstellen
+    for name, part in pairs(parts) do
+        if part then
+            local point = Instance.new("SphereHandleAdornment")
+            point.Name = name .. "_Point"
+            point.Adornee = part
+            point.AlwaysOnTop = true
+            point.ZIndex = 10
+            point.Radius = 0.3 -- Kleine Punkte
+            point.Transparency = 0.3
+            point.Color3 = espColor
+            point.Parent = ESPFolder
+        end
+    end
+    
+    -- Linien erstellen
+    for _, conn in ipairs(connections) do
+        local part1 = parts[conn[1]]
+        local part2 = parts[conn[2]]
+        
+        if part1 and part2 then
+            local line = Instance.new("LineHandleAdornment")
+            line.Name = conn[1] .. "_to_" .. conn[2]
+            line.Adornee = part1
+            line.AlwaysOnTop = true
+            line.ZIndex = 10
+            line.Thickness = 1.5 -- Dünne Linien für Performance
+            line.Length = 10 -- Wird dynamisch angepasst
+            line.Color3 = espColor
+            line.Parent = ESPFolder
+            
+            -- Eine Funktion zum Aktualisieren der Position im Update-Loop
+            line.From = part1.Position
+            line.To = part2.Position
+        end
+    end
+end
+
+local function UpdateStickmanESP()
+    for player, folder in pairs(ESPObjects) do
+        if folder and folder.Parent and player.Character then
+            -- Hauptkörperteile
+            local parts = {
+                Head = player.Character:FindFirstChild("Head"),
+                Torso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso"),
+                LeftArm = player.Character:FindFirstChild("Left Arm") or player.Character:FindFirstChild("LeftUpperArm"),
+                RightArm = player.Character:FindFirstChild("Right Arm") or player.Character:FindFirstChild("RightUpperArm"),
+                LeftLeg = player.Character:FindFirstChild("Left Leg") or player.Character:FindFirstChild("LeftUpperLeg"),
+                RightLeg = player.Character:FindFirstChild("Right Leg") or player.Character:FindFirstChild("RightUpperLeg")
+            }
+            
+            -- Verbindungen aktualisieren
+            local connections = {
+                {"Head", "Torso"},
+                {"Torso", "LeftArm"},
+                {"Torso", "RightArm"},
+                {"Torso", "LeftLeg"},
+                {"Torso", "RightLeg"}
+            }
+            
+            for _, conn in ipairs(connections) do
+                local part1 = parts[conn[1]]
+                local part2 = parts[conn[2]]
+                local line = folder:FindFirstChild(conn[1] .. "_to_" .. conn[2])
+                
+                if part1 and part2 and line then
+                    -- Linienposition aktualisieren
+                    line.From = part1.Position
+                    line.To = part2.Position
+                end
+            end
+        end
+    end
+end
+
+local function RemoveESP(player)
+    if ESPObjects[player] then
+        ESPObjects[player]:Destroy()
+        ESPObjects[player] = nil
+    end
+end
+
+local function RefreshESP()
+    if not ESPEnabled then return end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            CreateStickmanESP(player)
+        end
+    end
+end
+
+-- Rivals-spezifische Funktionen
+local function IsEnemy(player)
+    if player == LocalPlayer then return false end
+    
+    -- Vereinfachte Team-Erkennung für bessere Performance
+    local myTeam = nil
+    local theirTeam = nil
+    
+    pcall(function()
+        myTeam = LocalPlayer.Team
+        theirTeam = player.Team
+    end)
+    
+    if not myTeam or not theirTeam then return true end
+    return myTeam ~= theirTeam
+end
+
+-- Verbesserte Aimbot-Funktion speziell auf den Kopf (Performance-optimiert)
+local function GetBestHeadshot(character)
+    if not character then return nil end
+    
+    local head = character:FindFirstChild("Head")
+    if not head then return nil end
+    
+    -- Eine einfache Position berechnen - keine komplexe Logik für bessere Performance
+    return head.Position + Vector3.new(0, 0.2, 0)
+end
+
+local function GetClosestEnemyHead()
+    local closestPlayer = nil
+    local closestDistance = math.huge
+    local bestPosition = nil
+    
+    -- Cache für häufig verwendete Positionen
+    local cameraPosition = Camera.CFrame.Position
+    local mousePosition = Vector2.new(Mouse.X, Mouse.Y)
+    
+    for _, player in pairs(ActivePlayers) do
+        if player ~= LocalPlayer and player.Character and IsEnemy(player) then
+            local head = player.Character:FindFirstChild("Head")
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            
+            if head and humanoid and humanoid.Health > 0 then
+                local headPosition = GetBestHeadshot(player.Character)
+                
+                if headPosition then
+                    local screenPos, onScreen = Camera:WorldToScreenPoint(headPosition)
+                    
+                    if onScreen and screenPos.Z > 0 then
+                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePosition).Magnitude
+                        if dist < closestDistance then
+                            closestPlayer = player
+                            closestDistance = dist
+                            bestPosition = headPosition
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return closestPlayer, bestPosition
+end
+
+-- Event-Management für Performance
+local function SetupPlayerTracking()
+    -- Bestehende Spieler registrieren
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(ActivePlayers, player)
+        end
+    end
+    
+    -- Neue Spieler registrieren
+    Players.PlayerAdded:Connect(function(player)
+        table.insert(ActivePlayers, player)
+        if ESPEnabled and player ~= LocalPlayer then
+            wait(1) -- Kurze Wartezeit für Charakter-Erstellung
+            CreateStickmanESP(player)
+        end
+    end)
+    
+    -- Ausscheidende Spieler entfernen
+    Players.PlayerRemoving:Connect(function(player)
+        RemoveESP(player)
+        for i, p in ipairs(ActivePlayers) do
+            if p == player then
+                table.remove(ActivePlayers, i)
+                break
+            end
+        end
+    end)
+    
+    -- Character-Events
+    local function handleCharacterAdded(player, character)
+        if player == LocalPlayer then return end
+        
+        wait(0.5) -- Kurz warten für Charakterladung
+        if ESPEnabled then
+            CreateStickmanESP(player)
+        end
+    end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        player.CharacterAdded:Connect(function(character)
+            handleCharacterAdded(player, character)
+        end)
+    end
+    
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function(character)
+            handleCharacterAdded(player, character)
+        end)
+    end)
+    
+    -- Lokaler Spieler-Respawn
+    if LocalPlayer.Character then
+        LocalPlayer.CharacterAdded:Connect(function()
+            wait(1)
+            if ESPEnabled then
+                RefreshESP()
+            end
+        end)
+    end
+end
+
+-- Hauptsystem für Updates (Performance-optimiert)
+local lastUpdateTime = 0
+local function SetupMainLoop()
+    -- Heartbeat für Aimbot (höhere Priorität)
+    HeartbeatConnection = RunService.Heartbeat:Connect(function()
+        if AimbotEnabled and AimbotActive then
+            local _, aimPosition = GetClosestEnemyHead()
+            
+            if aimPosition then
+                local screenPos, onScreen = Camera:WorldToScreenPoint(aimPosition)
+                
+                if onScreen then
+                    -- Direktes Aim zum Kopf - weniger Smoothing für Präzision
+                    mousemoverel((screenPos.X - Mouse.X) * 0.4, (screenPos.Y - Mouse.Y) * 0.4)
+                end
+            end
+        end
+    end)
+    
+    -- RenderStepped für ESP (weniger häufige Updates)
+    RenderConnection = RunService.RenderStepped:Connect(function()
+        -- Performance-Optimierung: Nur alle 0.05 Sekunden aktualisieren statt jeden Frame
+        local currentTime = tick()
+        if currentTime - lastUpdateTime > UpdateRate then
+            lastUpdateTime = currentTime
+            
+            if ESPEnabled then
+                UpdateStickmanESP()
+            end
+        end
+    end)
+end
+
+-- GUI-Events
+ESPToggle.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+    ESPToggle.Text = "ESP: " .. (ESPEnabled and "ON" or "OFF")
+    ESPToggle.BackgroundColor3 = ESPEnabled and Color3.fromRGB(255, 100, 200) or Color3.fromRGB(230, 80, 150)
+    
+    if ESPEnabled then
+        RefreshESP()
+    else
+        for player, folder in pairs(ESPObjects) do
+            if folder then folder:Destroy() end
+        end
+        ESPObjects = {}
+    end
+end)
+
+AimbotToggle.MouseButton1Click:Connect(function()
+    AimbotEnabled = not AimbotEnabled
+    AimbotToggle.Text = "Aimbot: " .. (AimbotEnabled and "ON" or "OFF")
+    AimbotToggle.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(255, 100, 200) or Color3.fromRGB(230, 80, 150)
+end)
+
+ExitButton.MouseButton1Click:Connect(function()
+    -- Alle Verbindungen trennen
+    if HeartbeatConnection then
+        HeartbeatConnection:Disconnect()
+    end
+    
+    if RenderConnection then
+        RenderConnection:Disconnect()
+    end
+    
+    -- ESP aufräumen
+    for player, folder in pairs(ESPObjects) do
+        if folder then folder:Destroy() end
+    end
+    
+    -- GUI entfernen
+    ScreenGui:Destroy()
+end)
+
+-- Aimbot mit rechter Maustaste
+Mouse.Button2Down:Connect(function()
+    if AimbotEnabled then
+        AimbotActive = true
+    end
+end)
+
+Mouse.Button2Up:Connect(function()
+    AimbotActive = false
+end)
+
+-- Startup
+SetupPlayerTracking()
+SetupMainLoop()
+
+-- Wasserzeichen (minimalistisch für Performance)
+local Watermark = Instance.new("TextLabel")
+Watermark.Name = "Watermark"
+Watermark.Size = UDim2.new(0, 100, 0, 20)
+Watermark.Position = UDim2.new(0, 5, 0, 5)
+Watermark.BackgroundTransparency = 1
+Watermark.Text = "KAZHA"
+Watermark.TextColor3 = Color3.fromRGB(255, 105, 180)
+Watermark.TextSize = 12
+Watermark.Font = Enum.Font.GothamBold
+Watermark.Parent = ScreenGui
+
+print("KAZHA MENU geladen - [Performance-Optimiert]")
