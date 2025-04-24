@@ -1,0 +1,664 @@
+import { useState } from 'react';
+import { Settings, Edit, Trash2, PlusSquare, Save, X, HelpCircle, Clock, Farm, Eye } from 'lucide-react';
+
+export default function GameFeatureManager() {
+  const [flags, setFlags] = useState([
+    { 
+      id: 1, 
+      name: 'esp', 
+      enabled: false, 
+      description: 'Player ESP with 1s refresh rate', 
+      environment: 'game', 
+      type: 'toggle',
+      settings: {
+        refreshRate: 1,
+        showDistance: true,
+        showHealth: true,
+        color: '#A020F0'
+      }
+    },
+    { 
+      id: 2, 
+      name: 'speedHack', 
+      enabled: false, 
+      description: 'Increase movement speed', 
+      environment: 'game', 
+      type: 'slider',
+      value: 2,
+      minValue: 1,
+      maxValue: 5
+    },
+    { 
+      id: 3, 
+      name: 'jumpPower', 
+      enabled: false, 
+      description: 'Enhanced jump height', 
+      environment: 'game', 
+      type: 'slider',
+      value: 100,
+      minValue: 50,
+      maxValue: 200
+    },
+    { 
+      id: 4, 
+      name: 'autoFarm', 
+      enabled: false, 
+      description: 'Automatic resource collection', 
+      environment: 'game', 
+      type: 'complex',
+      settings: {
+        interval: 2,
+        radius: 50,
+        targetItems: ['coins', 'gems', 'resources']
+      }
+    }
+  ]);
+  
+  const [editing, setEditing] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
+  const [newFlag, setNewFlag] = useState({
+    name: '',
+    enabled: false,
+    description: '',
+    environment: 'game',
+    type: 'toggle',
+    value: 0,
+    settings: {}
+  });
+  const [showNewForm, setShowNewForm] = useState(false);
+  
+  const environments = ['game', 'menu', 'all'];
+  const flagTypes = ['toggle', 'slider', 'complex'];
+  
+  const handleToggle = (id) => {
+    setFlags(flags.map(flag => 
+      flag.id === id ? { ...flag, enabled: !flag.enabled } : flag
+    ));
+  };
+  
+  const handleDelete = (id) => {
+    setFlags(flags.filter(flag => flag.id !== id));
+  };
+  
+  const handleEdit = (flag) => {
+    setEditing({ ...flag });
+  };
+  
+  const handleSaveEdit = () => {
+    setFlags(flags.map(flag => 
+      flag.id === editing.id ? editing : flag
+    ));
+    setEditing(null);
+  };
+  
+  const handleNewFlag = () => {
+    const id = Math.max(0, ...flags.map(f => f.id)) + 1;
+    setFlags([...flags, { ...newFlag, id }]);
+    setNewFlag({
+      name: '',
+      enabled: false,
+      description: '',
+      environment: 'game',
+      type: 'toggle',
+      value: 0,
+      settings: {}
+    });
+    setShowNewForm(false);
+  };
+  
+  const handleChange = (e, field, isEditForm = false) => {
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    if (isEditForm) {
+      setEditing({ ...editing, [field]: value });
+    } else {
+      setNewFlag({ ...newFlag, [field]: value });
+    }
+  };
+  
+  const handleSliderChange = (e, isEditForm = false) => {
+    const value = parseInt(e.target.value, 10);
+    if (isEditForm) {
+      setEditing({ ...editing, value: value });
+    } else {
+      setNewFlag({ ...newFlag, value: value });
+    }
+  };
+  
+  const handleSettingChange = (settingKey, value, isEditForm = false) => {
+    if (isEditForm) {
+      setEditing({
+        ...editing,
+        settings: {
+          ...editing.settings,
+          [settingKey]: value
+        }
+      });
+    } else {
+      setNewFlag({
+        ...newFlag,
+        settings: {
+          ...newFlag.settings,
+          [settingKey]: value
+        }
+      });
+    }
+  };
+  
+  const exportConfig = () => {
+    // Create LUA code based on the current flags
+    const luaCode = `-- KAZHA Modified Game Settings
+local Settings = {
+    ESP = {
+        Enabled = ${flags.find(f => f.name === 'esp')?.enabled || false},
+        ShowDistance = ${flags.find(f => f.name === 'esp')?.settings?.showDistance || true},
+        ShowHealth = ${flags.find(f => f.name === 'esp')?.settings?.showHealth || true},
+        RefreshRate = ${flags.find(f => f.name === 'esp')?.settings?.refreshRate || 1},
+        Color = Color3.fromRGB(160, 32, 240) -- Purple for ESP
+    },
+    SpeedHack = {
+        Enabled = ${flags.find(f => f.name === 'speedHack')?.enabled || false},
+        SpeedMultiplier = ${flags.find(f => f.name === 'speedHack')?.value || 2},
+        Key = Enum.KeyCode.LeftShift
+    },
+    JumpPower = {
+        Enabled = ${flags.find(f => f.name === 'jumpPower')?.enabled || false},
+        Power = ${flags.find(f => f.name === 'jumpPower')?.value || 100}
+    },
+    AutoFarm = {
+        Enabled = ${flags.find(f => f.name === 'autoFarm')?.enabled || false},
+        Interval = ${flags.find(f => f.name === 'autoFarm')?.settings?.interval || 2},
+        Radius = ${flags.find(f => f.name === 'autoFarm')?.settings?.radius || 50}
+    }
+}
+
+-- The rest of your script implementation here...
+print("Modified features loaded successfully!")`;
+
+    // Create a download link for the config
+    const blob = new Blob([luaCode], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'game_config.lua';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  
+  // Generate LUA code as a string
+  const generateLuaCode = () => {
+    return `-- Feature Flag Configuration
+local Settings = {
+    ESP = {
+        Enabled = ${flags.find(f => f.name === 'esp')?.enabled || false},
+        ShowDistance = ${flags.find(f => f.name === 'esp')?.settings?.showDistance || true},
+        ShowHealth = ${flags.find(f => f.name === 'esp')?.settings?.showHealth || true},
+        RefreshRate = ${flags.find(f => f.name === 'esp')?.settings?.refreshRate || 1},
+    },
+    SpeedHack = {
+        Enabled = ${flags.find(f => f.name === 'speedHack')?.enabled || false},
+        SpeedMultiplier = ${flags.find(f => f.name === 'speedHack')?.value || 2},
+    },
+    JumpPower = {
+        Enabled = ${flags.find(f => f.name === 'jumpPower')?.enabled || false},
+        Power = ${flags.find(f => f.name === 'jumpPower')?.value || 100}
+    },
+    AutoFarm = {
+        Enabled = ${flags.find(f => f.name === 'autoFarm')?.enabled || false},
+        Interval = ${flags.find(f => f.name === 'autoFarm')?.settings?.interval || 2},
+        Radius = ${flags.find(f => f.name === 'autoFarm')?.settings?.radius || 50}
+    }
+}`;
+  };
+  
+  // Get feature icon based on name
+  const getFeatureIcon = (name) => {
+    switch (name) {
+      case 'esp':
+        return <Eye size={18} className="mr-2 text-purple-500" />;
+      case 'speedHack':
+        return <Clock size={18} className="mr-2 text-blue-500" />;
+      case 'jumpPower':
+        return <svg viewBox="0 0 24 24" width="18" height="18" className="mr-2 text-green-500">
+          <path fill="currentColor" d="M13 19h-2V7.07L7.76 11.3l-1.42-1.42L12 4.22l5.66 5.66-1.42 1.42L13 7.07V19z" />
+        </svg>;
+      case 'autoFarm':
+        return <Farm size={18} className="mr-2 text-amber-500" />;
+      default:
+        return null;
+    }
+  };
+  
+  return (
+    <div className="p-6 max-w-6xl mx-auto bg-gray-900 rounded-lg shadow text-gray-100">
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center">
+          <Settings className="mr-2 text-purple-400" />
+          <h1 className="text-2xl font-bold text-purple-300">Game Feature Flag Manager</h1>
+        </div>
+        <div className="flex space-x-2">
+          <button 
+            onClick={() => setShowHelp(!showHelp)}
+            className="p-2 rounded-full hover:bg-gray-700"
+          >
+            <HelpCircle className="text-purple-400" size={20} />
+          </button>
+          <button 
+            onClick={() => setShowNewForm(!showNewForm)}
+            className="flex items-center bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          >
+            <PlusSquare size={18} className="mr-1" />
+            New Flag
+          </button>
+          <button 
+            onClick={exportConfig}
+            className="flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            <Save size={18} className="mr-1" />
+            Export
+          </button>
+        </div>
+      </div>
+      
+      {showHelp && (
+        <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-purple-500">
+          <h3 className="font-semibold text-lg mb-2 text-purple-300">About Feature Flags</h3>
+          <ul className="list-disc ml-6 mb-2 text-gray-300">
+            <li><span className="font-medium text-purple-300">ESP:</span> Updated every 1 second to show player positions</li>
+            <li><span className="font-medium text-purple-300">SpeedHack:</span> Increases movement speed</li>
+            <li><span className="font-medium text-purple-300">JumpPower:</span> Enhances jump height</li>
+            <li><span className="font-medium text-purple-300">AutoFarm:</span> Automatically collects resources</li>
+          </ul>
+          <p className="text-gray-300">Use the Export button to download your configuration as LUA code.</p>
+        </div>
+      )}
+      
+      {showNewForm && (
+        <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-purple-300">Create New Feature Flag</h3>
+            <button onClick={() => setShowNewForm(false)} className="text-gray-400 hover:text-gray-200">
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+              <input 
+                type="text" 
+                value={newFlag.name} 
+                onChange={(e) => handleChange(e, 'name')}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                placeholder="camelCase name"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+              <input 
+                type="text" 
+                value={newFlag.description} 
+                onChange={(e) => handleChange(e, 'description')}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                placeholder="Brief description"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Environment</label>
+              <select 
+                value={newFlag.environment} 
+                onChange={(e) => handleChange(e, 'environment')}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+              >
+                {environments.map(env => (
+                  <option key={env} value={env}>{env}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Type</label>
+              <select 
+                value={newFlag.type} 
+                onChange={(e) => handleChange(e, 'type')}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+              >
+                {flagTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            
+            {newFlag.type === 'slider' && (
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-1">Value</label>
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="10"
+                  value={newFlag.value || 1} 
+                  onChange={(e) => handleSliderChange(e)}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>1</span>
+                  <span>{newFlag.value || 1}</span>
+                  <span>10</span>
+                </div>
+              </div>
+            )}
+            
+            {newFlag.type === 'complex' && (
+              <div className="col-span-2 grid grid-cols-1 gap-2">
+                <h4 className="text-sm font-medium text-gray-300">Settings</h4>
+                <div>
+                  <label className="block text-xs text-gray-400">Interval (seconds)</label>
+                  <input 
+                    type="number" 
+                    min="0.1" 
+                    step="0.1"
+                    value={newFlag.settings.interval || 1} 
+                    onChange={(e) => handleSettingChange('interval', parseFloat(e.target.value))}
+                    className="w-full px-3 py-1 bg-gray-700 border border-gray-600 rounded-md text-white"
+                  />
+                </div>
+              </div>
+            )}
+            
+            <div className="col-span-1 md:col-span-2 flex items-center">
+              <input 
+                type="checkbox" 
+                id="enabled" 
+                checked={newFlag.enabled} 
+                onChange={(e) => handleChange(e, 'enabled')}
+                className="mr-2"
+              />
+              <label htmlFor="enabled" className="text-sm font-medium text-gray-300">Enabled</label>
+            </div>
+          </div>
+          
+          <div className="mt-4 flex justify-end">
+            <button 
+              onClick={handleNewFlag}
+              disabled={!newFlag.name}
+              className={`flex items-center px-4 py-2 rounded ${
+                newFlag.name ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              <Save size={18} className="mr-1" />
+              Create Flag
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Editing Form */}
+      {editing && (
+        <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-yellow-600">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-yellow-400">Edit Feature Flag</h3>
+            <button onClick={() => setEditing(null)} className="text-gray-400 hover:text-gray-200">
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+              <input 
+                type="text" 
+                value={editing.name} 
+                onChange={(e) => handleChange(e, 'name', true)}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+              <input 
+                type="text" 
+                value={editing.description} 
+                onChange={(e) => handleChange(e, 'description', true)}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Environment</label>
+              <select 
+                value={editing.environment} 
+                onChange={(e) => handleChange(e, 'environment', true)}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+              >
+                {environments.map(env => (
+                  <option key={env} value={env}>{env}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Type</label>
+              <select 
+                value={editing.type} 
+                onChange={(e) => handleChange(e, 'type', true)}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+              >
+                {flagTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            
+            {editing.type === 'slider' && (
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-1">Value: {editing.value}</label>
+                <input 
+                  type="range" 
+                  min={editing.minValue || 1} 
+                  max={editing.maxValue || 10}
+                  value={editing.value || 1} 
+                  onChange={(e) => handleSliderChange(e, true)}
+                  className="w-full accent-purple-500"
+                />
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>{editing.minValue || 1}</span>
+                  <span>{editing.maxValue || 10}</span>
+                </div>
+              </div>
+            )}
+            
+            {editing.name === 'esp' && (
+              <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Refresh Rate (seconds)</label>
+                  <input 
+                    type="number" 
+                    value={editing.settings?.refreshRate || 1} 
+                    onChange={(e) => handleSettingChange('refreshRate', parseFloat(e.target.value), true)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                    min="0.1"
+                    step="0.1"
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center">
+                    <input 
+                      type="checkbox" 
+                      id="showDistance" 
+                      checked={editing.settings?.showDistance} 
+                      onChange={(e) => handleSettingChange('showDistance', e.target.checked, true)}
+                      className="mr-2"
+                    />
+                    <label htmlFor="showDistance" className="text-sm text-gray-300">Show Distance</label>
+                  </div>
+                  <div className="flex items-center">
+                    <input 
+                      type="checkbox" 
+                      id="showHealth" 
+                      checked={editing.settings?.showHealth} 
+                      onChange={(e) => handleSettingChange('showHealth', e.target.checked, true)}
+                      className="mr-2"
+                    />
+                    <label htmlFor="showHealth" className="text-sm text-gray-300">Show Health</label>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {editing.name === 'autoFarm' && (
+              <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Interval (seconds)</label>
+                  <input 
+                    type="number" 
+                    value={editing.settings?.interval || 2} 
+                    onChange={(e) => handleSettingChange('interval', parseFloat(e.target.value), true)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                    min="0.1"
+                    step="0.1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Collection Radius</label>
+                  <input 
+                    type="number" 
+                    value={editing.settings?.radius || 50} 
+                    onChange={(e) => handleSettingChange('radius', parseInt(e.target.value), true)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                    min="1"
+                  />
+                </div>
+              </div>
+            )}
+            
+            <div className="col-span-1 md:col-span-2 flex items-center">
+              <input 
+                type="checkbox" 
+                id="edit-enabled" 
+                checked={editing.enabled} 
+                onChange={(e) => handleChange(e, 'enabled', true)}
+                className="mr-2"
+              />
+              <label htmlFor="edit-enabled" className="text-sm font-medium text-gray-300">Enabled</label>
+            </div>
+          </div>
+          
+          <div className="mt-4 flex justify-end">
+            <button 
+              onClick={handleSaveEdit}
+              disabled={!editing.name}
+              className={`flex items-center px-4 py-2 rounded ${
+                editing.name ? 'bg-yellow-600 text-white hover:bg-yellow-700' : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              <Save size={18} className="mr-1" />
+              Save Changes
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Feature Flags Table */}
+      <div className="overflow-x-auto bg-gray-800 rounded-lg shadow border border-gray-700">
+        <table className="min-w-full divide-y divide-gray-700">
+          <thead className="bg-gray-900">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Description</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Environment</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Settings</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-gray-800 divide-y divide-gray-700">
+            {flags.map((flag) => (
+              <tr key={flag.id} className="hover:bg-gray-700">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    {getFeatureIcon(flag.name)}
+                    <span className="text-sm font-medium text-gray-200">{flag.name}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <button 
+                      onClick={() => handleToggle(flag.id)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${flag.enabled ? 'bg-purple-600' : 'bg-gray-600'}`}
+                    >
+                      <span 
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${flag.enabled ? 'translate-x-6' : 'translate-x-1'}`}
+                      />
+                    </button>
+                    <span className={`ml-2 text-sm ${flag.enabled ? 'text-purple-400' : 'text-gray-400'}`}>
+                      {flag.enabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{flag.description}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                    ${flag.environment === 'game' ? 'bg-purple-900 text-purple-200' : 
+                      flag.environment === 'menu' ? 'bg-blue-900 text-blue-200' : 
+                      'bg-green-900 text-green-200'}`}
+                  >
+                    {flag.environment}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{flag.type}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                  {flag.name === 'esp' && (
+                    <span>Refresh: {flag.settings?.refreshRate || 1}s</span>
+                  )}
+                  {flag.type === 'slider' && (
+                    <span>Value: {flag.value}</span>
+                  )}
+                  {flag.name === 'autoFarm' && (
+                    <span>Interval: {flag.settings?.interval || 2}s</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <div className="flex space-x-2">
+                    <button 
+                      onClick={() => handleEdit(flag)}
+                      className="text-yellow-500 hover:text-yellow-300"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(flag.id)}
+                      className="text-red-500 hover:text-red-300"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {flags.length === 0 && (
+              <tr>
+                <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-400">
+                  No feature flags added yet. Click "New Flag" to create one.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      
+      {/* Code Preview */}
+      <div className="mt-6 p-4 bg-gray-900 rounded-lg border border-gray-700">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-bold text-purple-300">Generated Code</h3>
+        </div>
+        <pre className="bg-gray-950 p-4 rounded text-sm text-gray-300 overflow-x-auto">
+          {generateLuaCode()}
+        </pre>
+      </div>
+    </div>
+  );
+}
