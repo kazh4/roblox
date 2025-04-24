@@ -1,0 +1,673 @@
+-- KAZHA MENU - Custom Cheat for Roblox "BlockSpin"
+-- Features: ESP, Bicycle Fly (T key), Auto Farm
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- Performance-Optimized Variables
+local ESPEnabled = false
+local BicycleFlyEnabled = false
+local AutoFarmEnabled = false
+local Running = false
+local Typing = false
+local ESPObjects = {}
+local ServiceConnections = {}
+local ActivePlayers = {}
+local UpdateRate = 1 -- ESP Update Rate in seconds
+local RequiredDistance = 2000
+
+-- Colors for the Black-Purple design (from the reference)
+local Colors = {
+    Background = Color3.fromRGB(20, 20, 25),
+    Border = Color3.fromRGB(100, 50, 200),
+    ButtonBg = Color3.fromRGB(30, 30, 40),
+    ButtonActive = Color3.fromRGB(120, 70, 220),
+    Text = Color3.fromRGB(220, 220, 255),
+    TitleBg = Color3.fromRGB(60, 30, 120),
+    ExitButton = Color3.fromRGB(150, 30, 60),
+    ESP = Color3.fromRGB(160, 32, 240)  -- Unified Purple for names
+}
+
+-- GUI Creation
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KAZHA_MENU_BLOCKSPIN"
+ScreenGui.Parent = game.CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 220, 0, 300)
+MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Colors.Background
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Colors.Border
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+-- Shadow for the main window
+local Shadow = Instance.new("ImageLabel")
+Shadow.Name = "Shadow"
+Shadow.Size = UDim2.new(1, 20, 1, 20)
+Shadow.Position = UDim2.new(0, -10, 0, -10)
+Shadow.BackgroundTransparency = 1
+Shadow.ImageTransparency = 0.6
+Shadow.Image = "rbxassetid://5028857084"
+Shadow.ScaleType = Enum.ScaleType.Slice
+Shadow.SliceCenter = Rect.new(24, 24, 276, 276)
+Shadow.ZIndex = -1
+Shadow.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")  
+Title.Name = "Title"
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundColor3 = Colors.TitleBg
+Title.BorderSizePixel = 0
+Title.Text = "BLOCKSPIN CHEAT"
+Title.TextColor3 = Colors.Text
+Title.TextSize = 20
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+-- ESP Toggle
+local ESPToggle = Instance.new("TextButton")
+ESPToggle.Name = "ESPToggle"
+ESPToggle.Size = UDim2.new(0.85, 0, 0, 30)
+ESPToggle.Position = UDim2.new(0.075, 0, 0.18, 0)
+ESPToggle.BackgroundColor3 = Colors.ButtonBg
+ESPToggle.BorderSizePixel = 1
+ESPToggle.BorderColor3 = Colors.Border
+ESPToggle.Text = "ESP: OFF"
+ESPToggle.TextColor3 = Colors.Text
+ESPToggle.TextSize = 16
+ESPToggle.Font = Enum.Font.Gotham
+ESPToggle.Parent = MainFrame
+
+-- Bicycle Fly Toggle
+local BicycleFlyToggle = Instance.new("TextButton")
+BicycleFlyToggle.Name = "BicycleFlyToggle"
+BicycleFlyToggle.Size = UDim2.new(0.85, 0, 0, 30)
+BicycleFlyToggle.Position = UDim2.new(0.075, 0, 0.32, 0)
+BicycleFlyToggle.BackgroundColor3 = Colors.ButtonBg
+BicycleFlyToggle.BorderSizePixel = 1
+BicycleFlyToggle.BorderColor3 = Colors.Border
+BicycleFlyToggle.Text = "Bicycle Fly (T): OFF"
+BicycleFlyToggle.TextColor3 = Colors.Text
+BicycleFlyToggle.TextSize = 16
+BicycleFlyToggle.Font = Enum.Font.Gotham
+BicycleFlyToggle.Parent = MainFrame
+
+-- Auto Farm Toggle
+local AutoFarmToggle = Instance.new("TextButton")
+AutoFarmToggle.Name = "AutoFarmToggle"
+AutoFarmToggle.Size = UDim2.new(0.85, 0, 0, 30)
+AutoFarmToggle.Position = UDim2.new(0.075, 0, 0.46, 0)
+AutoFarmToggle.BackgroundColor3 = Colors.ButtonBg
+AutoFarmToggle.BorderSizePixel = 1
+AutoFarmToggle.BorderColor3 = Colors.Border
+AutoFarmToggle.Text = "Auto Farm: OFF"
+AutoFarmToggle.TextColor3 = Colors.Text
+AutoFarmToggle.TextSize = 16
+AutoFarmToggle.Font = Enum.Font.Gotham
+AutoFarmToggle.Parent = MainFrame
+
+-- Auto Farm Speed Slider
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Name = "SpeedLabel"
+SpeedLabel.Size = UDim2.new(0.85, 0, 0, 20)
+SpeedLabel.Position = UDim2.new(0.075, 0, 0.6, 0)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Text = "Farm Speed: 1"
+SpeedLabel.TextColor3 = Colors.Text
+SpeedLabel.TextSize = 14
+SpeedLabel.Font = Enum.Font.Gotham
+SpeedLabel.Parent = MainFrame
+
+local SpeedSlider = Instance.new("Frame")
+SpeedSlider.Name = "SpeedSlider"
+SpeedSlider.Size = UDim2.new(0.85, 0, 0, 6)
+SpeedSlider.Position = UDim2.new(0.075, 0, 0.67, 0)
+SpeedSlider.BackgroundColor3 = Colors.ButtonBg
+SpeedSlider.BorderSizePixel = 0
+SpeedSlider.Parent = MainFrame
+
+local SpeedValue = Instance.new("Frame")
+SpeedValue.Name = "SpeedValue"
+SpeedValue.Size = UDim2.new(0.3, 0, 1, 0)
+SpeedValue.BackgroundColor3 = Colors.ButtonActive
+SpeedValue.BorderSizePixel = 0
+SpeedValue.Parent = SpeedSlider
+
+local SpeedDragger = Instance.new("TextButton")
+SpeedDragger.Name = "SpeedDragger"
+SpeedDragger.Size = UDim2.new(0, 16, 0, 16)
+SpeedDragger.Position = UDim2.new(0.3, -8, 0.5, -8)
+SpeedDragger.BackgroundColor3 = Colors.Border
+SpeedDragger.BorderSizePixel = 0
+SpeedDragger.Text = ""
+SpeedDragger.Parent = SpeedSlider
+
+-- Fly Speed Slider
+local FlySpeedLabel = Instance.new("TextLabel")
+FlySpeedLabel.Name = "FlySpeedLabel"
+FlySpeedLabel.Size = UDim2.new(0.85, 0, 0, 20)
+FlySpeedLabel.Position = UDim2.new(0.075, 0, 0.74, 0)
+FlySpeedLabel.BackgroundTransparency = 1
+FlySpeedLabel.Text = "Fly Speed: 5"
+FlySpeedLabel.TextColor3 = Colors.Text
+FlySpeedLabel.TextSize = 14
+FlySpeedLabel.Font = Enum.Font.Gotham
+FlySpeedLabel.Parent = MainFrame
+
+local FlySpeedSlider = Instance.new("Frame")
+FlySpeedSlider.Name = "FlySpeedSlider"
+FlySpeedSlider.Size = UDim2.new(0.85, 0, 0, 6)
+FlySpeedSlider.Position = UDim2.new(0.075, 0, 0.81, 0)
+FlySpeedSlider.BackgroundColor3 = Colors.ButtonBg
+FlySpeedSlider.BorderSizePixel = 0
+FlySpeedSlider.Parent = MainFrame
+
+local FlySpeedValue = Instance.new("Frame")
+FlySpeedValue.Name = "FlySpeedValue"
+FlySpeedValue.Size = UDim2.new(0.5, 0, 1, 0)
+FlySpeedValue.BackgroundColor3 = Colors.ButtonActive
+FlySpeedValue.BorderSizePixel = 0
+FlySpeedValue.Parent = FlySpeedSlider
+
+local FlySpeedDragger = Instance.new("TextButton")
+FlySpeedDragger.Name = "FlySpeedDragger"
+FlySpeedDragger.Size = UDim2.new(0, 16, 0, 16)
+FlySpeedDragger.Position = UDim2.new(0.5, -8, 0.5, -8)
+FlySpeedDragger.BackgroundColor3 = Colors.Border
+FlySpeedDragger.BorderSizePixel = 0
+FlySpeedDragger.Text = ""
+FlySpeedDragger.Parent = FlySpeedSlider
+
+-- Exit Button
+local ExitButton = Instance.new("TextButton")
+ExitButton.Name = "ExitButton"
+ExitButton.Size = UDim2.new(0.85, 0, 0, 30)
+ExitButton.Position = UDim2.new(0.075, 0, 0.88, 0)
+ExitButton.BackgroundColor3 = Colors.ExitButton
+ExitButton.BorderSizePixel = 1
+ExitButton.BorderColor3 = Color3.fromRGB(100, 0, 20)
+ExitButton.Text = "Exit"
+ExitButton.TextColor3 = Colors.Text
+ExitButton.TextSize = 16
+ExitButton.Font = Enum.Font.GothamBold
+ExitButton.Parent = MainFrame
+
+-- Status label
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Size = UDim2.new(0.85, 0, 0, 20)
+StatusLabel.Position = UDim2.new(0.075, 0, 0.96, 0)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Ready"
+StatusLabel.TextColor3 = Colors.Text
+StatusLabel.TextSize = 12
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.Parent = MainFrame
+
+-- Settings for features
+local Settings = {
+    FarmSpeed = 1,
+    FlySpeed = 5,
+    FlyEnabled = false,
+    FlyKey = Enum.KeyCode.T,
+    UpdateRate = 1
+}
+
+-- Only create name ESP
+local function CreateNameESP(player)
+    if not player or not player.Character then return end
+    
+    -- Check if ESP for this player already exists
+    if ESPObjects[player] and ESPObjects[player].Parent then
+        RemoveESP(player) -- Remove old ESP if exists
+    end
+    
+    -- Create ESP container
+    local ESPFolder = Instance.new("Folder")
+    ESPFolder.Name = "ESP_" .. player.Name
+    ESPFolder.Parent = ScreenGui
+    
+    ESPObjects[player] = ESPFolder
+    
+    -- Main body parts for the head (for name tag)
+    local head = player.Character:FindFirstChild("Head")
+    
+    if head then
+        -- Display player name above head
+        local nameTag = Instance.new("BillboardGui")
+        nameTag.Name = "NameESP"
+        nameTag.Size = UDim2.new(0, 200, 0, 50)
+        nameTag.StudsOffset = Vector3.new(0, 2, 0)
+        nameTag.AlwaysOnTop = true
+        nameTag.Adornee = head
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "PlayerName"
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.Text = player.Name
+        nameLabel.TextColor3 = Colors.ESP  -- Purple color
+        nameLabel.TextSize = 20 -- Larger font
+        nameLabel.TextStrokeTransparency = 0.3 -- Outline for better readability
+        nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.Parent = nameTag
+        
+        nameTag.Parent = ESPFolder
+    end
+end
+
+-- Remove ESP
+local function RemoveESP(player)
+    if ESPObjects[player] then
+        ESPObjects[player]:Destroy()
+        ESPObjects[player] = nil
+    end
+end
+
+-- Update ESP for all players
+local function RefreshESP()
+    if not ESPEnabled then return end
+    
+    -- Delete all ESPs and recreate them
+    for _, folder in pairs(ESPObjects) do
+        if folder then folder:Destroy() end
+    end
+    ESPObjects = {}
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            CreateNameESP(player)
+        end
+    end
+end
+
+-- Set up player tracking
+local function SetupPlayerTracking()
+    -- Register existing players
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(ActivePlayers, player)
+        end
+    end
+    
+    -- Register new players
+    Players.PlayerAdded:Connect(function(player)
+        table.insert(ActivePlayers, player)
+        if ESPEnabled and player ~= LocalPlayer then
+            task.wait(1) -- Short wait for character creation
+            if player.Character then
+                CreateNameESP(player)
+            end
+        end
+    end)
+    
+    -- Remove players that leave
+    Players.PlayerRemoving:Connect(function(player)
+        RemoveESP(player)
+        for i, p in ipairs(ActivePlayers) do
+            if p == player then
+                table.remove(ActivePlayers, i)
+                break
+            end
+        end
+    end)
+    
+    -- Character events
+    local function handleCharacterAdded(player, character)
+        if player == LocalPlayer then return end
+        
+        task.wait(0.5) -- Wait a bit for character loading
+        if ESPEnabled then
+            CreateNameESP(player)
+        end
+    end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        player.CharacterAdded:Connect(function(character)
+            handleCharacterAdded(player, character)
+        end)
+    end
+    
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function(character)
+            handleCharacterAdded(player, character)
+        end)
+    end)
+    
+    -- Local player respawn
+    if LocalPlayer.Character then
+        LocalPlayer.CharacterAdded:Connect(function()
+            task.wait(1)
+            if ESPEnabled then
+                RefreshESP()
+            end
+        end)
+    end
+end
+
+-- Find player's bicycle
+local function GetPlayerBicycle()
+    -- This function attempts to find the bicycle in different ways
+    -- Method 1: Look for it in the character's children
+    if LocalPlayer.Character then
+        for _, child in pairs(LocalPlayer.Character:GetChildren()) do
+            if child:IsA("Model") and (child.Name:lower():find("bike") or 
+                                        child.Name:lower():find("bicycle") or
+                                        child.Name:lower():find("cycle")) then
+                return child
+            end
+        end
+    end
+    
+    -- Method 2: Look in the workspace for models owned by the player
+    for _, obj in pairs(workspace:GetChildren()) do
+        if obj:IsA("Model") and 
+           (obj.Name:lower():find("bike") or obj.Name:lower():find("bicycle") or obj.Name:lower():find("cycle")) then
+            -- Check if this bike belongs to the player
+            local owner = obj:FindFirstChild("Owner")
+            if owner and owner.Value == LocalPlayer then
+                return obj
+            end
+        end
+    end
+    
+    return nil
+end
+
+-- Bicycle Fly function
+local bicycleConnection
+local function ToggleBicycleFly(enabled)
+    if enabled then
+        -- Enable bicycle fly
+        bicycleConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if not gameProcessed and input.KeyCode == Settings.FlyKey then
+                local bicycle = GetPlayerBicycle()
+                
+                if bicycle then
+                    StatusLabel.Text = "Flying activated"
+                    
+                    -- Find the primary part to apply velocity
+                    local primaryPart = bicycle.PrimaryPart or bicycle:FindFirstChild("Body") or 
+                                        bicycle:FindFirstChildWhichIsA("BasePart")
+                    
+                    if primaryPart then
+                        -- Set up flying
+                        local flyForce = Instance.new("BodyVelocity")
+                        flyForce.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                        flyForce.P = 1000
+                        flyForce.Velocity = Camera.CFrame.LookVector * Settings.FlySpeed
+                        flyForce.Parent = primaryPart
+                        
+                        -- Remove after 0.1 seconds for tap control
+                        game:GetService("Debris"):AddItem(flyForce, 0.1)
+                    else
+                        StatusLabel.Text = "No suitable part found"
+                    end
+                else
+                    StatusLabel.Text = "No bicycle found"
+                end
+            end
+        end)
+    else
+        -- Disable bicycle fly
+        if bicycleConnection then
+            bicycleConnection:Disconnect()
+            bicycleConnection = nil
+        end
+    end
+end
+
+-- Auto farm function
+local farmingConnection
+local function ToggleAutoFarm(enabled)
+    if enabled then
+        StatusLabel.Text = "Auto farming started"
+        
+        -- Find collectibles/objectives in the game
+        local function findCollectibles()
+            local collectibles = {}
+            
+            -- Common names for collectibles in Roblox games
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and 
+                   (obj.Name:lower():find("coin") or 
+                    obj.Name:lower():find("gem") or 
+                    obj.Name:lower():find("collectible") or
+                    obj.Name:lower():find("point") or
+                    obj.Name:lower():find("orb") or
+                    obj.Name:lower():find("star")) then
+                    table.insert(collectibles, obj)
+                end
+            end
+            
+            return collectibles
+        end
+        
+        -- Start the farming loop
+        farmingConnection = RunService.Heartbeat:Connect(function()
+            if not AutoFarmEnabled then return end
+            
+            local character = LocalPlayer.Character
+            if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+            
+            local hrp = character.HumanoidRootPart
+            local collectibles = findCollectibles()
+            
+            if #collectibles > 0 then
+                -- Find the closest collectible
+                local closest, distance = nil, math.huge
+                for _, collectible in pairs(collectibles) do
+                    local dist = (collectible.Position - hrp.Position).Magnitude
+                    if dist < distance then
+                        closest = collectible
+                        distance = dist
+                    end
+                end
+                
+                if closest then
+                    -- Move toward the closest collectible
+                    local bicycle = GetPlayerBicycle()
+                    if bicycle and bicycle.PrimaryPart then
+                        -- Move the bicycle
+                        local direction = (closest.Position - bicycle.PrimaryPart.Position).Unit
+                        local velocity = direction * Settings.FarmSpeed * 10
+                        
+                        -- Apply velocity to the bicycle
+                        local bodyVelocity = bicycle.PrimaryPart:FindFirstChildOfClass("BodyVelocity")
+                        if not bodyVelocity then
+                            bodyVelocity = Instance.new("BodyVelocity")
+                            bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                            bodyVelocity.P = 1000
+                            bodyVelocity.Parent = bicycle.PrimaryPart
+                        end
+                        bodyVelocity.Velocity = velocity
+                    else
+                        -- Try moving the character directly if no bicycle found
+                        local humanoid = character:FindFirstChildOfClass("Humanoid")
+                        if humanoid then
+                            humanoid:MoveTo(closest.Position)
+                        end
+                    end
+                end
+            else
+                StatusLabel.Text = "No collectibles found"
+            end
+        end)
+    else
+        StatusLabel.Text = "Auto farming stopped"
+        if farmingConnection then
+            farmingConnection:Disconnect()
+            farmingConnection = nil
+        end
+        
+        -- Stop any movement
+        local bicycle = GetPlayerBicycle()
+        if bicycle and bicycle.PrimaryPart then
+            local bodyVelocity = bicycle.PrimaryPart:FindFirstChildOfClass("BodyVelocity")
+            if bodyVelocity then
+                bodyVelocity:Destroy()
+            end
+        end
+    end
+end
+
+-- Typing Check
+ServiceConnections.TypingStartedConnection = UserInputService.TextBoxFocused:Connect(function()
+    Typing = true
+end)
+
+ServiceConnections.TypingEndedConnection = UserInputService.TextBoxFocusReleased:Connect(function()
+    Typing = false
+end)
+
+-- Main system for updates with 1-second interval for ESP
+local function SetupMainLoop()
+    -- 1-second timer for ESP refresh
+    spawn(function()
+        while true do
+            if ESPEnabled then
+                RefreshESP()
+            end
+            wait(Settings.UpdateRate)
+        end
+    end)
+end
+
+-- Slider functionality
+local function SetupSliders()
+    -- Farm speed slider
+    local isDraggingFarm = false
+    
+    SpeedDragger.MouseButton1Down:Connect(function()
+        isDraggingFarm = true
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isDraggingFarm = false
+        end
+    end)
+    
+    RunService.RenderStepped:Connect(function()
+        if isDraggingFarm then
+            local mousePos = UserInputService:GetMouseLocation()
+            local sliderPos = SpeedSlider.AbsolutePosition
+            local sliderSize = SpeedSlider.AbsoluteSize
+            
+            local relativePos = math.clamp((mousePos.X - sliderPos.X) / sliderSize.X, 0, 1)
+            SpeedValue.Size = UDim2.new(relativePos, 0, 1, 0)
+            SpeedDragger.Position = UDim2.new(relativePos, -8, 0.5, -8)
+            
+            -- Update farm speed (scale from 1 to 10)
+            Settings.FarmSpeed = math.floor(1 + relativePos * 9)
+            SpeedLabel.Text = "Farm Speed: " .. Settings.FarmSpeed
+        end
+    end)
+    
+    -- Fly speed slider
+    local isDraggingFly = false
+    
+    FlySpeedDragger.MouseButton1Down:Connect(function()
+        isDraggingFly = true
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isDraggingFly = false
+        end
+    end)
+    
+    RunService.RenderStepped:Connect(function()
+        if isDraggingFly then
+            local mousePos = UserInputService:GetMouseLocation()
+            local sliderPos = FlySpeedSlider.AbsolutePosition
+            local sliderSize = FlySpeedSlider.AbsoluteSize
+            
+            local relativePos = math.clamp((mousePos.X - sliderPos.X) / sliderSize.X, 0, 1)
+            FlySpeedValue.Size = UDim2.new(relativePos, 0, 1, 0)
+            FlySpeedDragger.Position = UDim2.new(relativePos, -8, 0.5, -8)
+            
+            -- Update fly speed (scale from 1 to 20)
+            Settings.FlySpeed = math.floor(1 + relativePos * 19)
+            FlySpeedLabel.Text = "Fly Speed: " .. Settings.FlySpeed
+        end
+    end)
+end
+
+-- GUI-Events
+ESPToggle.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+    ESPToggle.Text = "ESP: " .. (ESPEnabled and "ON" or "OFF")
+    ESPToggle.BackgroundColor3 = ESPEnabled and Colors.ButtonActive or Colors.ButtonBg
+    
+    if ESPEnabled then
+        RefreshESP()
+        StatusLabel.Text = "ESP Enabled"
+    else
+        for player, folder in pairs(ESPObjects) do
+            if folder then folder:Destroy() end
+        end
+        ESPObjects = {}
+        StatusLabel.Text = "ESP Disabled"
+    end
+end)
+
+BicycleFlyToggle.MouseButton1Click:Connect(function()
+    BicycleFlyEnabled = not BicycleFlyEnabled
+    BicycleFlyToggle.Text = "Bicycle Fly (T): " .. (BicycleFlyEnabled and "ON" or "OFF")
+    BicycleFlyToggle.BackgroundColor3 = BicycleFlyEnabled and Colors.ButtonActive or Colors.ButtonBg
+    
+    ToggleBicycleFly(BicycleFlyEnabled)
+    StatusLabel.Text = BicycleFlyEnabled and "Bicycle Fly Enabled (Press T)" or "Bicycle Fly Disabled"
+end)
+
+AutoFarmToggle.MouseButton1Click:Connect(function()
+    AutoFarmEnabled = not AutoFarmEnabled
+    AutoFarmToggle.Text = "Auto Farm: " .. (AutoFarmEnabled and "ON" or "OFF")
+    AutoFarmToggle.BackgroundColor3 = AutoFarmEnabled and Colors.ButtonActive or Colors.ButtonBg
+    
+    ToggleAutoFarm(AutoFarmEnabled)
+end)
+
+ExitButton.MouseButton1Click:Connect(function()
+    -- Disconnect all connections
+    for _, connection in pairs(ServiceConnections) do
+        if connection then connection:Disconnect() end
+    end
+    
+    -- Stop features
+    if bicycleConnection then bicycleConnection:Disconnect() end
+    if farmingConnection then farmingConnection:Disconnect() end
+    
+    -- Remove all ESPs
+    for player, folder in pairs(ESPObjects) do
+        if folder then folder:Destroy() end
+    end
+    
+    -- Remove a bicycle's velocity if it exists
+    local bicycle = GetPlayerBicycle()
+    if bicycle and bicycle.PrimaryPart then
+        local bodyVelocity = bicycle.PrimaryPart:FindFirstChildOfClass("BodyVelocity")
+        if bodyVelocity then bodyVelocity:Destroy() end
+    end
+    
+    -- Remove GUI
+    ScreenGui:Destroy()
+end)
+
+-- Initialization
+SetupPlayerTracking()
+SetupMainLoop()
+SetupSliders()
+
+StatusLabel.Text = "Cheat loaded successfully"
