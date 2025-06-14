@@ -1,0 +1,574 @@
+-- KAZHA MENU - 
+-- kazhaware
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- Performance-Optimierte Variablen
+local ESPEnabled = false
+local AimbotEnabled = false
+local Running = false
+local Typing = false
+local ESPObjects = {}
+local ServiceConnections = {}
+local ActivePlayers = {}
+local UpdateRate = 1 -- ESP Update-Rate auf 1 Sekunde geändert
+local RequiredDistance = 2000
+local OriginalSensitivity
+
+-- Farben für das Schwarz-Lila Design
+local Colors = {
+    Background = Color3.fromRGB(20, 20, 25),
+    Border = Color3.fromRGB(100, 50, 200),
+    ButtonBg = Color3.fromRGB(30, 30, 40),
+    ButtonActive = Color3.fromRGB(120, 70, 220),
+    Text = Color3.fromRGB(220, 220, 255),
+    TitleBg = Color3.fromRGB(60, 30, 120),
+    ExitButton = Color3.fromRGB(150, 30, 60),
+    ESP = Color3.fromRGB(160, 32, 240)  -- Einheitliches Lila für Namen
+}
+
+-- Aimbot-Einstellungen
+local AimbotSettings = {
+    Enabled = false,
+    TeamCheck = true,
+    AliveCheck = true,
+    WallCheck = true,
+    OffsetToMoveDirection = false,
+    OffsetIncrement = 15,
+    Sensitivity = 0,
+    Sensitivity2 = 3.5,
+    LockMode = 1,
+    LockPart = "Head",
+    TriggerKey = Enum.UserInputType.MouseButton2,
+    Toggle = false,
+    FOVRadius = 90,
+    FOVVisible = true
+}
+
+-- Aimbot-Variables
+local Animation
+local Locked
+
+-- GUI Erstellung
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "44K_MENU"
+ScreenGui.Parent = game.CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 220, 0, 250)
+MainFrame.Position = UDim2.new(0.8, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Colors.Background
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Colors.Border
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+-- Schatten für das Hauptfenster
+local Shadow = Instance.new("ImageLabel")
+Shadow.Name = "Shadow"
+Shadow.Size = UDim2.new(1, 20, 1, 20)
+Shadow.Position = UDim2.new(0, -10, 0, -10)
+Shadow.BackgroundTransparency = 1
+Shadow.ImageTransparency = 0.6
+Shadow.Image = "rbxassetid://5028857084"
+Shadow.ScaleType = Enum.ScaleType.Slice
+Shadow.SliceCenter = Rect.new(24, 24, 276, 276)
+Shadow.ZIndex = -1
+Shadow.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")  
+Title.Name = "Title"
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundColor3 = Colors.TitleBg
+Title.BorderSizePixel = 0
+Title.Text = "44k"
+Title.TextColor3 = Colors.Text
+Title.TextSize = 20
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+-- ESP Toggle
+local ESPToggle = Instance.new("TextButton")
+ESPToggle.Name = "ESPToggle"
+ESPToggle.Size = UDim2.new(0.85, 0, 0, 30)
+ESPToggle.Position = UDim2.new(0.075, 0, 0.18, 0)
+ESPToggle.BackgroundColor3 = Colors.ButtonBg
+ESPToggle.BorderSizePixel = 1
+ESPToggle.BorderColor3 = Colors.Border
+ESPToggle.Text = "ESP: OFF"
+ESPToggle.TextColor3 = Colors.Text
+ESPToggle.TextSize = 16
+ESPToggle.Font = Enum.Font.Gotham
+ESPToggle.Parent = MainFrame
+
+-- Aimbot Toggle
+local AimbotToggle = Instance.new("TextButton")
+AimbotToggle.Name = "AimbotToggle"
+AimbotToggle.Size = UDim2.new(0.85, 0, 0, 30)
+AimbotToggle.Position = UDim2.new(0.075, 0, 0.32, 0)
+AimbotToggle.BackgroundColor3 = Colors.ButtonBg
+AimbotToggle.BorderSizePixel = 1
+AimbotToggle.BorderColor3 = Colors.Border
+AimbotToggle.Text = "Aimbot: OFF"
+AimbotToggle.TextColor3 = Colors.Text
+AimbotToggle.TextSize = 16
+AimbotToggle.Font = Enum.Font.Gotham
+AimbotToggle.Parent = MainFrame
+
+-- TeamCheck Toggle
+local TeamCheckToggle = Instance.new("TextButton")
+TeamCheckToggle.Name = "TeamCheckToggle"
+TeamCheckToggle.Size = UDim2.new(0.85, 0, 0, 30)
+TeamCheckToggle.Position = UDim2.new(0.075, 0, 0.46, 0)
+TeamCheckToggle.BackgroundColor3 = Colors.ButtonActive
+TeamCheckToggle.BorderSizePixel = 1
+TeamCheckToggle.BorderColor3 = Colors.Border
+TeamCheckToggle.Text = "Team Check: ON"
+TeamCheckToggle.TextColor3 = Colors.Text
+TeamCheckToggle.TextSize = 16
+TeamCheckToggle.Font = Enum.Font.Gotham
+TeamCheckToggle.Parent = MainFrame
+
+-- Wall Check Toggle
+local WallCheckToggle = Instance.new("TextButton")
+WallCheckToggle.Name = "WallCheckToggle"
+WallCheckToggle.Size = UDim2.new(0.85, 0, 0, 30)
+WallCheckToggle.Position = UDim2.new(0.075, 0, 0.6, 0)
+WallCheckToggle.BackgroundColor3 = Colors.ButtonActive
+WallCheckToggle.BorderSizePixel = 1
+WallCheckToggle.BorderColor3 = Colors.Border
+WallCheckToggle.Text = "Wall Check: ON"
+WallCheckToggle.TextColor3 = Colors.Text
+WallCheckToggle.TextSize = 16
+WallCheckToggle.Font = Enum.Font.Gotham
+WallCheckToggle.Parent = MainFrame
+
+-- FOV Toggle
+local FOVToggle = Instance.new("TextButton")
+FOVToggle.Name = "FOVToggle"
+FOVToggle.Size = UDim2.new(0.85, 0, 0, 30)
+FOVToggle.Position = UDim2.new(0.075, 0, 0.74, 0)
+FOVToggle.BackgroundColor3 = Colors.ButtonActive
+FOVToggle.BorderSizePixel = 1
+FOVToggle.BorderColor3 = Colors.Border
+FOVToggle.Text = "FOV Circle: ON"
+FOVToggle.TextColor3 = Colors.Text
+FOVToggle.TextSize = 16
+FOVToggle.Font = Enum.Font.Gotham
+FOVToggle.Parent = MainFrame
+
+-- Exit Button
+local ExitButton = Instance.new("TextButton")
+ExitButton.Name = "ExitButton"
+ExitButton.Size = UDim2.new(0.85, 0, 0, 30)
+ExitButton.Position = UDim2.new(0.075, 0, 0.88, 0)
+ExitButton.BackgroundColor3 = Colors.ExitButton
+ExitButton.BorderSizePixel = 1
+ExitButton.BorderColor3 = Color3.fromRGB(100, 0, 20)
+ExitButton.Text = "Exit"
+ExitButton.TextColor3 = Colors.Text
+ExitButton.TextSize = 16
+ExitButton.Font = Enum.Font.GothamBold
+ExitButton.Parent = MainFrame
+
+-- FOV Circles
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = AimbotSettings.FOVVisible
+FOVCircle.Radius = AimbotSettings.FOVRadius
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Thickness = 1
+FOVCircle.Filled = false
+FOVCircle.Transparency = 1
+FOVCircle.NumSides = 60
+
+local FOVCircleOutline = Drawing.new("Circle")
+FOVCircleOutline.Visible = AimbotSettings.FOVVisible
+FOVCircleOutline.Radius = AimbotSettings.FOVRadius
+FOVCircleOutline.Color = Color3.fromRGB(0, 0, 0)
+FOVCircleOutline.Thickness = 2
+FOVCircleOutline.Filled = false
+FOVCircleOutline.Transparency = 1
+FOVCircleOutline.NumSides = 60
+
+-- Zuverlässige Enemy-Erkennung
+local function IsEnemy(player)
+    if player == LocalPlayer then 
+        return false 
+    end
+    
+    if not AimbotSettings.TeamCheck then
+        return true
+    end
+    
+    local myTeam = LocalPlayer.Team
+    local theirTeam = player.Team
+    
+    if not myTeam or not theirTeam then return true end
+    
+    return myTeam ~= theirTeam
+end
+
+-- Nur Namen ESP erstellen (statt Strichmännchen)
+local function CreateNameESP(player)
+    if not player or not player.Character then return end
+    
+    -- Überprüfe, ob der ESP für diesen Spieler bereits existiert
+    if ESPObjects[player] and ESPObjects[player].Parent then
+        RemoveESP(player) -- Alten ESP entfernen, falls vorhanden
+    end
+    
+    -- ESP-Container erstellen
+    local ESPFolder = Instance.new("Folder")
+    ESPFolder.Name = "ESP_" .. player.Name
+    ESPFolder.Parent = ScreenGui
+    
+    ESPObjects[player] = ESPFolder
+    
+    -- Hauptkörperteile für den Kopf (für Namens-Tag)
+    local head = player.Character:FindFirstChild("Head")
+    
+    if head then
+        -- Spielernamen anzeigen über dem Kopf
+        local nameTag = Instance.new("BillboardGui")
+        nameTag.Name = "NameESP"
+        nameTag.Size = UDim2.new(0, 200, 0, 50)
+        nameTag.StudsOffset = Vector3.new(0, 2, 0)
+        nameTag.AlwaysOnTop = true
+        nameTag.Adornee = head
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "PlayerName"
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.Text = player.Name
+        nameLabel.TextColor3 = Colors.ESP  -- Lila Farbe
+        nameLabel.TextSize = 20 -- Größere Schrift
+        nameLabel.TextStrokeTransparency = 0.3 -- Umriss für bessere Lesbarkeit
+        nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.Parent = nameTag
+        
+        nameTag.Parent = ESPFolder
+    end
+end
+
+-- ESP entfernen
+local function RemoveESP(player)
+    if ESPObjects[player] then
+        ESPObjects[player]:Destroy()
+        ESPObjects[player] = nil
+    end
+end
+
+-- ESP für alle Spieler aktualisieren
+local function RefreshESP()
+    if not ESPEnabled then return end
+    
+    -- Alle ESPs löschen und neu erstellen
+    for _, folder in pairs(ESPObjects) do
+        if folder then folder:Destroy() end
+    end
+    ESPObjects = {}
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            CreateNameESP(player)
+        end
+    end
+end
+
+-- Aimbot-Funktionen
+local function ConvertVector(Vector)
+    return Vector2.new(Vector.X, Vector.Y)
+end
+
+local function CancelLock()
+    Locked = nil
+    FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+    UserInputService.MouseDeltaSensitivity = OriginalSensitivity
+
+    if Animation then
+        Animation:Cancel()
+    end
+end
+
+local function GetClosestPlayer()
+    local LockPart = AimbotSettings.LockPart
+
+    if not Locked then
+        RequiredDistance = AimbotSettings.FOVVisible and AimbotSettings.FOVRadius or 2000
+
+        for _, player in pairs(Players:GetPlayers()) do
+            local Character = player.Character
+            local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+
+            if player ~= LocalPlayer and Character and Character:FindFirstChild(LockPart) and Humanoid then
+                local PartPosition = Character[LockPart].Position
+
+                if AimbotSettings.TeamCheck and not IsEnemy(player) then
+                    continue
+                end
+
+                if AimbotSettings.AliveCheck and Humanoid.Health <= 0 then
+                    continue
+                end
+
+                if AimbotSettings.WallCheck then
+                    local BlacklistTable = LocalPlayer.Character:GetDescendants()
+                    
+                    for _, Value in pairs(Character:GetDescendants()) do
+                        table.insert(BlacklistTable, Value)
+                    end
+
+                    if #Camera:GetPartsObscuringTarget({PartPosition}, BlacklistTable) > 0 then
+                        continue
+                    end
+                end
+
+                local Vector, OnScreen, Distance = Camera:WorldToViewportPoint(PartPosition)
+                Vector = ConvertVector(Vector)
+                Distance = (UserInputService:GetMouseLocation() - Vector).Magnitude
+
+                if Distance < RequiredDistance and OnScreen then
+                    RequiredDistance, Locked = Distance, player
+                end
+            end
+        end
+    elseif (UserInputService:GetMouseLocation() - ConvertVector(Camera:WorldToViewportPoint(Locked.Character[LockPart].Position))).Magnitude > RequiredDistance then
+        CancelLock()
+    end
+end
+
+-- Event-Management
+local function SetupPlayerTracking()
+    -- Bestehende Spieler registrieren
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(ActivePlayers, player)
+        end
+    end
+    
+    -- Neue Spieler registrieren
+    Players.PlayerAdded:Connect(function(player)
+        table.insert(ActivePlayers, player)
+        if ESPEnabled and player ~= LocalPlayer then
+            task.wait(1) -- Kurze Wartezeit für Charakter-Erstellung
+            if player.Character then
+                CreateNameESP(player)
+            end
+        end
+    end)
+    
+    -- Ausscheidende Spieler entfernen
+    Players.PlayerRemoving:Connect(function(player)
+        RemoveESP(player)
+        for i, p in ipairs(ActivePlayers) do
+            if p == player then
+                table.remove(ActivePlayers, i)
+                break
+            end
+        end
+    end)
+    
+    -- Character-Events
+    local function handleCharacterAdded(player, character)
+        if player == LocalPlayer then return end
+        
+        task.wait(0.5) -- Kurz warten für Charakterladung
+        if ESPEnabled then
+            CreateNameESP(player)
+        end
+    end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        player.CharacterAdded:Connect(function(character)
+            handleCharacterAdded(player, character)
+        end)
+    end
+    
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function(character)
+            handleCharacterAdded(player, character)
+        end)
+    end)
+    
+    -- Lokaler Spieler-Respawn
+    if LocalPlayer.Character then
+        LocalPlayer.CharacterAdded:Connect(function()
+            task.wait(1)
+            if ESPEnabled then
+                RefreshESP()
+            end
+        end)
+    end
+end
+
+-- Typing Check
+ServiceConnections.TypingStartedConnection = UserInputService.TextBoxFocused:Connect(function()
+    Typing = true
+end)
+
+ServiceConnections.TypingEndedConnection = UserInputService.TextBoxFocusReleased:Connect(function()
+    Typing = false
+end)
+
+-- Hauptsystem für Updates mit 1-Sekunden-Intervall für ESP
+local function SetupMainLoop()
+    OriginalSensitivity = UserInputService.MouseDeltaSensitivity
+    
+    -- RenderStepped für Aimbot (hohe Frequenz)
+    ServiceConnections.RenderSteppedConnection = RunService.RenderStepped:Connect(function()
+        -- FOV-Kreis aktualisieren
+        if AimbotSettings.FOVVisible and AimbotSettings.Enabled then
+            FOVCircle.Visible = true
+            FOVCircleOutline.Visible = true
+            FOVCircle.Position = UserInputService:GetMouseLocation()
+            FOVCircleOutline.Position = UserInputService:GetMouseLocation()
+            FOVCircle.Radius = AimbotSettings.FOVRadius
+            FOVCircleOutline.Radius = AimbotSettings.FOVRadius
+        else
+            FOVCircle.Visible = false
+            FOVCircleOutline.Visible = false
+        end
+        
+        -- Aimbot-Logik
+        if Running and AimbotSettings.Enabled then
+            GetClosestPlayer()
+            
+            local Offset = AimbotSettings.OffsetToMoveDirection and Locked and Locked.Character:FindFirstChildOfClass("Humanoid").MoveDirection * (math.clamp(AimbotSettings.OffsetIncrement, 1, 30) / 10) or Vector3.zero
+            
+            if Locked then
+                local LockedPosition_Vector3 = Locked.Character[AimbotSettings.LockPart].Position
+                local LockedPosition = Camera:WorldToViewportPoint(LockedPosition_Vector3 + Offset)
+                
+                if AimbotSettings.LockMode == 2 then
+                    mousemoverel((LockedPosition.X - UserInputService:GetMouseLocation().X) / AimbotSettings.Sensitivity2, 
+                                (LockedPosition.Y - UserInputService:GetMouseLocation().Y) / AimbotSettings.Sensitivity2)
+                else
+                    if AimbotSettings.Sensitivity > 0 then
+                        Animation = TweenService:Create(Camera, TweenInfo.new(AimbotSettings.Sensitivity, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), 
+                                                    {CFrame = CFrame.new(Camera.CFrame.Position, LockedPosition_Vector3)})
+                        Animation:Play()
+                    else
+                        Camera.CFrame = CFrame.new(Camera.CFrame.Position, LockedPosition_Vector3 + Offset)
+                    end
+                    
+                    UserInputService.MouseDeltaSensitivity = 0
+                end
+                
+                FOVCircle.Color = Color3.fromRGB(255, 150, 150) -- Locked color
+            end
+        end
+    end)
+    
+    -- 1-Sekunden-Timer für ESP-Refresh
+    spawn(function()
+        while true do
+            if ESPEnabled then
+                RefreshESP()
+            end
+            wait(UpdateRate) -- Jetzt 1 Sekunde warten
+        end
+    end)
+    
+    -- Input-Handling für Aimbot
+    ServiceConnections.InputBeganConnection = UserInputService.InputBegan:Connect(function(Input)
+        local TriggerKey, Toggle = AimbotSettings.TriggerKey, AimbotSettings.Toggle
+        
+        if Typing then return end
+        
+        if Input.UserInputType == Enum.UserInputType.Keyboard and Input.KeyCode == TriggerKey or Input.UserInputType == TriggerKey then
+            if Toggle then
+                Running = not Running
+                
+                if not Running then
+                    CancelLock()
+                end
+            else
+                Running = true
+            end
+        end
+    end)
+    
+    ServiceConnections.InputEndedConnection = UserInputService.InputEnded:Connect(function(Input)
+        local TriggerKey, Toggle = AimbotSettings.TriggerKey, AimbotSettings.Toggle
+        
+        if Toggle or Typing then return end
+        
+        if Input.UserInputType == Enum.UserInputType.Keyboard and Input.KeyCode == TriggerKey or Input.UserInputType == TriggerKey then
+            Running = false
+            CancelLock()
+        end
+    end)
+end
+
+-- GUI-Events
+ESPToggle.MouseButton1Click:Connect(function()
+    ESPEnabled = not ESPEnabled
+    ESPToggle.Text = "ESP: " .. (ESPEnabled and "ON" or "OFF")
+    ESPToggle.BackgroundColor3 = ESPEnabled and Colors.ButtonActive or Colors.ButtonBg
+    
+    if ESPEnabled then
+        RefreshESP()
+    else
+        for player, folder in pairs(ESPObjects) do
+            if folder then folder:Destroy() end
+        end
+        ESPObjects = {}
+    end
+end)
+
+AimbotToggle.MouseButton1Click:Connect(function()
+    AimbotSettings.Enabled = not AimbotSettings.Enabled
+    AimbotToggle.Text = "Aimbot: " .. (AimbotSettings.Enabled and "ON" or "OFF")
+    AimbotToggle.BackgroundColor3 = AimbotSettings.Enabled and Colors.ButtonActive or Colors.ButtonBg
+end)
+
+TeamCheckToggle.MouseButton1Click:Connect(function()
+    AimbotSettings.TeamCheck = not AimbotSettings.TeamCheck
+    TeamCheckToggle.Text = "Team Check: " .. (AimbotSettings.TeamCheck and "ON" or "OFF")
+    TeamCheckToggle.BackgroundColor3 = AimbotSettings.TeamCheck and Colors.ButtonActive or Colors.ButtonBg
+end)
+
+WallCheckToggle.MouseButton1Click:Connect(function()
+    AimbotSettings.WallCheck = not AimbotSettings.WallCheck
+    WallCheckToggle.Text = "Wall Check: " .. (AimbotSettings.WallCheck and "ON" or "OFF")
+    WallCheckToggle.BackgroundColor3 = AimbotSettings.WallCheck and Colors.ButtonActive or Colors.ButtonBg
+end)
+
+FOVToggle.MouseButton1Click:Connect(function()
+    AimbotSettings.FOVVisible = not AimbotSettings.FOVVisible
+    FOVToggle.Text = "FOV Circle: " .. (AimbotSettings.FOVVisible and "ON" or "OFF")
+    FOVToggle.BackgroundColor3 = AimbotSettings.FOVVisible and Colors.ButtonActive or Colors.ButtonBg
+end)
+
+ExitButton.MouseButton1Click:Connect(function()
+    -- Alle Verbindungen trennen
+    for _, connection in pairs(ServiceConnections) do
+        if connection then connection:Disconnect() end
+    end
+    
+    -- Alle ESPs entfernen
+    for player, folder in pairs(ESPObjects) do
+        if folder then folder:Destroy() end
+    end
+    
+    -- FOV-Kreis entfernen
+    if FOVCircle then FOVCircle:Remove() end
+    if FOVCircleOutline then FOVCircleOutline:Remove() end
+    
+    -- GUI entfernen
+    ScreenGui:Destroy()
+end)
+
+-- Initialisierung
+SetupPlayerTracking()
+SetupMainLoop()
